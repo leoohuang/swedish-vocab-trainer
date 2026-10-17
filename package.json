@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc -b && vite build",
+    "build": "npm run build:client && node scripts/build-worker.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "start": "tsx server/start.ts"
+    "start": "tsx server/start.ts",
+    "build:client": "tsc -b && vite build"
   },
   "dependencies": {
     "idb-keyval": "^6.3.0",
@@ -30,6 +31,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "esbuild": "^0.28.2",
     "prettier": "^3.9.10",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

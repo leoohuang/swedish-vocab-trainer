@@ -22,3 +22,7 @@ local-data/
 test-results/
 playwright-report/
 *.tsbuildinfo
+
+# Local hosting workflow state
+.openai/local/
+.sites-runtime/
