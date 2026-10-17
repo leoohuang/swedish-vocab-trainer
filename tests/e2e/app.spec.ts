@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 const seedText = 'ett äpple - 苹果\nen bok - 书\nläsa - 阅读\nfika - 喝咖啡小憩\nbehöver kolla';
 async function importText(page: import('@playwright/test').Page, text = seedText) {
   await page.goto('/');

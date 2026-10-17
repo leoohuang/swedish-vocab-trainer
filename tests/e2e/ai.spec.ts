@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 const lesson = 'På morgonen åt jag frukost. Sedan läste jag en bok. Jag tycker om att läsa.';
 const response = {
   detectedMode: 'article',

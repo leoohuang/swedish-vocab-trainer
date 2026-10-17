@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 for (const ext of ['docx', 'xlsx', 'csv', 'pdf'])
   test(`真实 ${ext} 文件可解析并保存`, async ({ page }) => {
     await page.goto('/');

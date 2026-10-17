@@ -1,3 +1,4 @@
+import { withWordGroups } from './groups';
 import { aiEvidence } from '../shared/ai';
 import { get, set } from 'idb-keyval';
 import { z } from 'zod';
@@ -24,6 +25,9 @@ const score = z.object({
 });
 const schema = z.object({
   version: z.literal(1),
+  audio: z
+    .object({ typingSound: z.boolean(), answerSound: z.boolean(), autoPronounce: z.boolean() })
+    .optional(),
   decks: z
     .array(z.object({ id, name: str, created: z.number(), pending: z.array(draft).max(2000) }))
     .max(500),
@@ -32,6 +36,7 @@ const schema = z.object({
       z.object({
         id,
         ai: aiEvidence.optional(),
+        group: z.number().int().min(1).max(100000).optional(),
         deckId: id,
         term: str.min(1),
         meaning: str.min(1),
@@ -99,7 +104,7 @@ export function validateData(raw: unknown): Data {
       s.tasks.some((t) => !s.ids.includes(t.wordId)))
   )
     throw new Error('备份中的练习记录不完整。');
-  return d;
+  return withWordGroups(d);
 }
 const KEY = 'ord-data-v1';
 export async function loadData(): Promise<Data> {

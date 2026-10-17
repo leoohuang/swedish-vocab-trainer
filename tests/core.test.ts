@@ -130,7 +130,10 @@ describe('备份完整性', () => {
       words: [w],
       decks: [{ id: 'd1', name: 'test', created: 1, pending: [] }],
     };
-    expect(validateData(JSON.parse(JSON.stringify(data)))).toEqual(data);
+    expect(validateData(JSON.parse(JSON.stringify(data)))).toEqual({
+      ...data,
+      words: [{ ...w, group: 1 }],
+    });
     expect(() => validateData({ ...data, version: 2 })).toThrow();
     expect(() => validateData({ ...data, decks: [] })).toThrow();
     expect(() =>

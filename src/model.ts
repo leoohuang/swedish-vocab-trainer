@@ -1,3 +1,4 @@
+import type { AudioSettings } from './audio';
 import type { AiEvidence } from '../shared/ai';
 export type Draft = {
   ai?: AiEvidence;
@@ -11,6 +12,7 @@ export type Draft = {
   issue: string;
 };
 export type Word = {
+  group?: number;
   ai?: AiEvidence;
   id: string;
   deckId: string;
@@ -50,6 +52,7 @@ export type History = {
   correct: number;
 };
 export type Data = {
+  audio?: AudioSettings;
   version: 1;
   decks: Deck[];
   words: Word[];

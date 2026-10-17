@@ -1,3 +1,16 @@
+import { assignWordGroups, groupWords, recommendedGroup, studyGroups } from './groups';
+import type { StudyGroup } from './groups';
+import { GroupChoices } from './GroupChoices';
+import {
+  DEFAULT_AUDIO,
+  answerSound,
+  speakSwedish,
+  stopSpeech,
+  typingSound,
+  unlockAudio,
+} from './audio';
+import type { AudioSettings } from './audio';
+import { SoundSettings } from './SoundSettings';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
@@ -112,24 +125,7 @@ function Empty({
     </div>
   );
 }
-function speak(term: string, onError: (text: string) => void) {
-  if (!('speechSynthesis' in window)) {
-    onError('当前浏览器不支持朗读。');
-    return;
-  }
-  const voice = speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith('sv'));
-  if (!voice) {
-    onError('设备还没有可用的瑞典语语音，请在系统语音设置中添加。');
-    return;
-  }
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(term);
-  u.voice = voice;
-  u.lang = 'sv-SE';
-  u.rate = 0.8;
-  u.onerror = () => onError('朗读没有成功，请检查设备的语音设置。');
-  speechSynthesis.speak(u);
-}
+const speak = speakSwedish;
 export default function App() {
   const [data, setData] = useState<Data>(emptyData),
     [ready, setReady] = useState(false),
@@ -155,7 +151,10 @@ export default function App() {
     [edit, setEdit] = useState<Word | null>(null),
     [picking, setPicking] = useState(false),
     [selected, setSelected] = useState<string[]>([]),
-    [batch, setBatch] = useState(10),
+    [pickerWords, setPickerWords] = useState<Word[]>([]),
+    [chosenGroup, setChosenGroup] = useState<string | null>(null),
+    [manualPick, setManualPick] = useState(false),
+    [reviewPicker, setReviewPicker] = useState(false),
     [training, setTraining] = useState(false),
     [intro, setIntro] = useState(false);
   const [draftFilter, setDraftFilter] = useState('all'),
@@ -164,6 +163,18 @@ export default function App() {
     backupRef = useRef<HTMLInputElement>(null),
     spellRef = useRef<HTMLInputElement>(null);
   const loadFailed = useRef(false);
+  const lastPlayedFeedback = useRef('');
+  const speechErrorShown = useRef(false);
+  const audioSettings = { ...DEFAULT_AUDIO, ...data.audio };
+  function updateAudio(patch: Partial<AudioSettings>) {
+    if (patch.autoPronounce === false) stopSpeech();
+    unlockAudio();
+    setData((old) => ({ ...old, audio: { ...DEFAULT_AUDIO, ...old.audio, ...patch } }));
+  }
+  useEffect(() => {
+    if (!training) stopSpeech();
+    return () => stopSpeech();
+  }, [training]);
   useEffect(() => {
     let live = true;
     loadData()
@@ -420,10 +431,10 @@ export default function App() {
     }
     setData((old) => ({
       ...old,
-      words: [
+      words: assignWordGroups([
         ...old.words.map((w) => (w.deckId === id ? existing.get(wordKey(w)) || w : w)),
         ...words,
-      ],
+      ]),
       decks: pendingDeck
         ? old.decks.map((d) => (d.id === id ? { ...d, name: deckName.trim(), pending } : d))
         : [...old.decks, { id, name: deckName.trim(), created: Date.now(), pending }],
@@ -438,8 +449,16 @@ export default function App() {
       `已加入 ${words.length} 个词${pending.length ? `，${pending.length} 条留在待整理` : ''}${duplicates ? `，合并 ${duplicates} 条重复内容并保留备注` : ''}。`,
     );
   }
-  function openPicker(words: Word[]) {
+  const allGroups = studyGroups(data.words, data.decks);
+  const homeNextGroup = recommendedGroup(allGroups);
+  const pickerGroups = studyGroups(pickerWords, data.decks);
+  function chooseGroup(group: StudyGroup, review = reviewPicker) {
+    setChosenGroup(group.key);
+    setSelected(groupWords(group, review).map((w) => w.id));
+  }
+  function openPicker(words: Word[], review = filter === 'due') {
     if (active) {
+      unlockAudio();
       setTraining(true);
       setIntro(false);
       return;
@@ -448,13 +467,22 @@ export default function App() {
       setToast('还没有可练习的词，先导入一份笔记吧。');
       return;
     }
-    setSelected(words.slice(0, batch).map((w) => w.id));
+    const pool = assignWordGroups(words);
+    const groups = studyGroups(pool, data.decks);
+    const group = recommendedGroup(groups, review);
+    setPickerWords(pool);
+    setReviewPicker(review);
+    setManualPick(false);
+    setChosenGroup(group?.key || null);
+    setSelected(group ? groupWords(group, review).map((w) => w.id) : []);
     setPicking(true);
   }
-  const pickPool = filter === 'due' ? due : allPool;
   function begin() {
     const words = data.words.filter((w) => selected.includes(w.id));
     if (!words.length) return;
+    unlockAudio();
+    stopSpeech();
+    speechErrorShown.current = false;
     const next = createSession(words, data.words);
     setData((old) => ({ ...old, session: next }));
     setPicking(false);
@@ -462,15 +490,31 @@ export default function App() {
     setIntro(true);
   }
   function updateSession(next: Session) {
+    const eventKey = `${next.id}:${next.position}`;
+    if (next.feedback && s && !s.feedback && lastPlayedFeedback.current !== eventKey) {
+      lastPlayedFeedback.current = eventKey;
+      const task = next.tasks[next.position],
+        word = data.words.find((w) => w.id === task.wordId);
+      const assessed = task.type === 'spell' || !!task.options?.length;
+      if (assessed && audioSettings.answerSound) answerSound(next.feedback.correct);
+      if (next.feedback.correct && audioSettings.autoPronounce && word)
+        speak(word.term, (msg) => {
+          if (!speechErrorShown.current) {
+            speechErrorShown.current = true;
+            setToast(msg);
+          }
+        });
+    }
     setData((old) => (next.finished ? finishSession(old, next) : { ...old, session: next }));
   }
   function answer(value: string) {
-    if (!s || s.finished) return;
+    if (!s || s.finished || s.feedback) return;
     const word = data.words.find((w) => w.id === s.tasks[s.position].wordId)!;
     updateSession(answerSession(s, word, value));
   }
   function next() {
     if (!s) return;
+    stopSpeech();
     updateSession(advanceSession(s));
   }
   function exportBackup() {
@@ -543,7 +587,7 @@ export default function App() {
     setData((old) => ({
       ...old,
       decks: [...old.decks, { id, name: '生活里的瑞典语', created: Date.now(), pending: [] }],
-      words: [...old.words, ...words],
+      words: assignWordGroups([...old.words, ...words]),
     }));
     setPage('library');
     setDeckId(id);
@@ -671,10 +715,25 @@ export default function App() {
                       <button
                         className="button primary"
                         onClick={() =>
-                          active ? (setTraining(true), setIntro(false)) : openImport()
+                          active
+                            ? (setTraining(true), setIntro(false))
+                            : homeNextGroup
+                              ? openPicker(
+                                  data.words.filter((w) => w.deckId === homeNextGroup.deckId),
+                                  false,
+                                )
+                              : data.words.length
+                                ? navigate('library')
+                                : openImport()
                         }
                       >
-                        {active ? '继续上次练习' : '导入我的单词'}
+                        {active
+                          ? '继续上次练习'
+                          : homeNextGroup
+                            ? `学习第 ${homeNextGroup.number} 组`
+                            : data.words.length
+                              ? '查看我的词库'
+                              : '导入我的单词'}
                         {active ? <ArrowRight size={18} /> : <Plus size={19} />}
                       </button>
                       <button className="text-button" onClick={() => openImport(true)}>
@@ -760,11 +819,7 @@ export default function App() {
                         setPage('library');
                         setDeckId(null);
                         setFilter('due');
-                        setSelected(due.slice(0, 10).map((w) => w.id));
-                        if (active) {
-                          setTraining(true);
-                          setIntro(false);
-                        } else setPicking(true);
+                        openPicker(due, true);
                       } else {
                         setPage('library');
                         setDeckId(null);
@@ -772,7 +827,7 @@ export default function App() {
                       }
                     }}
                   >
-                    {due.length ? '复习到期单词' : '去词库挑选单词'}
+                    {due.length ? '复习到期单词' : '按分组开始练习'}
                     <ArrowRight size={18} />
                   </button>
                 </section>
@@ -931,6 +986,24 @@ export default function App() {
                     </div>
                   </div>
                 )}
+                {currentDeck && (
+                  <div className="deck-group-summary">
+                    <div>
+                      <span className="eyebrow">TEN WORDS AT A TIME</span>
+                      <strong>
+                        {(() => {
+                          const groups = allGroups.filter((g) => g.deckId === currentDeck.id);
+                          const next = recommendedGroup(groups);
+                          return next ? `接着学习第 ${next.number} 组` : '所有分组都已学过';
+                        })()}
+                      </strong>
+                    </div>
+                    <span>
+                      {allGroups.filter((g) => g.deckId === currentDeck.id && g.completed).length} /{' '}
+                      {allGroups.filter((g) => g.deckId === currentDeck.id).length} 组已学过
+                    </span>
+                  </div>
+                )}
                 <div className="collection-panel">
                   <div className="collection-controls">
                     <div className="tabs">
@@ -1034,7 +1107,7 @@ export default function App() {
                       )}
                       <div className="collection-footer">
                         <span>
-                          {allPool.length} 个词 <span className="muted">· 每组最多 20 个</span>
+                          {allPool.length} 个词 <span className="muted">· 每组 10 个</span>
                         </span>
                         <button className="button primary" onClick={() => openPicker(allPool)}>
                           {active ? '继续上次练习' : `开始一组练习`}
@@ -1184,10 +1257,16 @@ export default function App() {
                     </button>
                   </article>
                   <article className="setting-card">
+                    <Volume2 size={28} />
+                    <h2>练习声音</h2>
+                    <p>答对后读出瑞典语，打字与判题都有声音反馈。可按你的习惯分别关闭。</p>
+                    <SoundSettings settings={audioSettings} onChange={updateAudio} />
+                  </article>
+                  <article className="setting-card">
                     <Keyboard size={28} />
                     <h2>练习规则</h2>
                     <p>
-                      默认每组 10 个词。å、ä、ö
+                      每组固定 10 个词，默认继续未完成的组。å、ä、ö
                       严格区分；冠词在提示中展示，拼写时输入词本身。每词两次独立拼写正确达到本轮目标，最多尝试
                       4 次。复习从次日开始。
                     </p>
@@ -1571,47 +1650,58 @@ export default function App() {
         </Modal>
       )}
       {picking && (
-        <Modal title="今天，想记住哪些词？" onClose={() => setPicking(false)}>
-          <div className="picker-settings">
-            <span>每组词数</span>
-            <select
-              aria-label="每组词数"
-              value={batch}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                setBatch(n);
-                setSelected(pickPool.slice(0, n).map((w) => w.id));
+        <Modal title="接着学，每组 10 个" onClose={() => setPicking(false)}>
+          <div className="group-picker-tabs">
+            <button
+              className={!manualPick ? 'selected' : ''}
+              onClick={() => {
+                setManualPick(false);
+                const group = recommendedGroup(pickerGroups, reviewPicker);
+                setChosenGroup(group?.key || null);
+                setSelected(group ? groupWords(group, reviewPicker).map((w) => w.id) : []);
               }}
             >
-              {[5, 10, 15, 20].map((n) => (
-                <option key={n} value={n}>
-                  {n} 个词
-                </option>
-              ))}
-            </select>
+              按组练习
+            </button>
+            <button className={manualPick ? 'selected' : ''} onClick={() => setManualPick(true)}>
+              自己选词
+            </button>
           </div>
-          <p className="muted">先选词义，再练拼写。每个词两次独立拼对，达到本轮目标。</p>
-          <div className="picker-list">
-            {pickPool.map((w) => (
-              <label key={w.id}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(w.id)}
-                  disabled={!selected.includes(w.id) && selected.length >= 20}
-                  onChange={(e) =>
-                    setSelected((old) =>
-                      e.target.checked ? [...old, w.id] : old.filter((id) => id !== w.id),
-                    )
-                  }
-                />
-                <strong lang="sv">{w.term}</strong>
-                <span>{w.meaning}</span>
-              </label>
-            ))}
-          </div>
+          {!manualPick ? (
+            <GroupChoices
+              groups={pickerGroups}
+              selectedKey={chosenGroup}
+              onChoose={chooseGroup}
+              review={reviewPicker}
+            />
+          ) : (
+            <>
+              <p className="picker-help">
+                自由挑选最多 20 个词；也可以回到按组练习，一键开始下一组。
+              </p>
+              <div className="picker-list">
+                {pickerWords.map((w) => (
+                  <label key={w.id}>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(w.id)}
+                      disabled={!selected.includes(w.id) && selected.length >= 20}
+                      onChange={(e) =>
+                        setSelected((old) =>
+                          e.target.checked ? [...old, w.id] : old.filter((id) => id !== w.id),
+                        )
+                      }
+                    />
+                    <strong lang="sv">{w.term}</strong>
+                    <span>{w.meaning}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
           <div className="modal-footer">
             <span>
-              已选 <strong>{selected.length}</strong> 个词
+              {manualPick ? '已选' : '本次练习'} <strong>{selected.length}</strong> 个词
             </span>
             <button className="button primary" disabled={!selected.length} onClick={begin}>
               开始练习
@@ -1629,10 +1719,13 @@ export default function App() {
             <span className="training-header-label">
               {s.finished ? '本轮练习完成' : intro ? '认识这一组单词' : '专心这一刻，一次一个词'}
             </span>
-            <button className="button secondary" onClick={() => setTraining(false)}>
-              {s.finished ? '返回词库' : '保存并退出'}
-              {s.finished ? <X size={16} /> : <Pause size={16} />}
-            </button>
+            <div className="training-header-actions">
+              <SoundSettings settings={audioSettings} onChange={updateAudio} compact />
+              <button className="button secondary" onClick={() => setTraining(false)}>
+                {s.finished ? '返回词库' : '保存并退出'}
+                {s.finished ? <X size={16} /> : <Pause size={16} />}
+              </button>
+            </div>
           </header>
           {s.finished ? (
             <div className="result-screen">
@@ -1641,7 +1734,7 @@ export default function App() {
               </div>
               <span className="eyebrow">BRA JOBBAT!</span>
               <h1>今天，又前进了一点。</h1>
-              <p>完成了 {s.ids.length} 个词的练习。下次见面，从复习开始。</p>
+              <p>完成了 {s.ids.length} 个词的练习。已经学过的组会记住，下次接着下一组。</p>
               <div className="result-stats">
                 <div>
                   <strong>
@@ -1725,6 +1818,7 @@ export default function App() {
               onNext={next}
               onUpdate={updateSession}
               onToast={setToast}
+              audioSettings={audioSettings}
             />
           )}
           {!s.finished && (
@@ -1798,7 +1892,9 @@ function Practice({
   onNext,
   onUpdate,
   onToast,
+  audioSettings,
 }: {
+  audioSettings: AudioSettings;
   session: Session;
   words: Word[];
   spellRef: React.RefObject<HTMLInputElement | null>;
@@ -1831,6 +1927,7 @@ function Practice({
     return () => window.removeEventListener('keydown', key);
   }, [s.feedback, s.position, isSpell, task.options, onNext, onAnswer]);
   function insert(char: string) {
+    if (audioSettings.typingSound) typingSound();
     const input = spellRef.current;
     const start = input?.selectionStart ?? s.input.length,
       end = input?.selectionEnd ?? start;
@@ -1854,7 +1951,10 @@ function Practice({
           <span style={{ width: `${(s.position / s.tasks.length) * 100}%` }} />
         </div>
       </div>
-      <article className={`practice-card ${s.feedback ? 'has-feedback' : ''}`}>
+      <article
+        key={`${s.id}:${s.position}`}
+        className={`practice-card ${s.feedback ? `has-feedback ${s.feedback.correct ? 'answer-correct' : 'answer-wrong'}` : ''}`}
+      >
         <div className="practice-topline">
           <span className="tag">{isSpell ? '把记忆写出来' : '先认出它的意思'}</span>
           <button
@@ -1892,7 +1992,27 @@ function Practice({
                 placeholder="在这里输入瑞典语…"
                 value={s.input}
                 disabled={!!s.feedback}
-                onChange={(e) => onUpdate({ ...s, input: e.target.value })}
+                onKeyDown={(e) => {
+                  if (
+                    audioSettings.typingSound &&
+                    !e.nativeEvent.isComposing &&
+                    !e.ctrlKey &&
+                    !e.metaKey &&
+                    (e.key.length === 1 || ['Backspace', 'Delete'].includes(e.key))
+                  )
+                    typingSound();
+                }}
+                onChange={(e) => {
+                  const native = e.nativeEvent as InputEvent;
+                  if (
+                    audioSettings.typingSound &&
+                    !native.isComposing &&
+                    native.inputType &&
+                    /^(insertText|delete)/.test(native.inputType)
+                  )
+                    typingSound();
+                  onUpdate({ ...s, input: e.target.value });
+                }}
               />
               <div className="keyboard-row">
                 <div>
