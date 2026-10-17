@@ -147,6 +147,8 @@ export default function App() {
   const [blocks, setBlocks] = useState<SourceBlock[] | null>(null);
   const [aiSummary, setAiSummary] = useState('');
   const abortAi = useRef<AbortController | null>(null);
+  const importNameEdited = useRef(false);
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [toast, setToast] = useState(''),
     [edit, setEdit] = useState<Word | null>(null),
     [picking, setPicking] = useState(false),
@@ -257,6 +259,7 @@ export default function App() {
     };
   }, [importing]);
   function openImport(example = false, d?: Deck) {
+    importNameEdited.current = false;
     setAiOptions({ ...defaultOptions(), engine: example ? 'local' : 'ai' });
     setBlocks(null);
     setAiSummary(example ? '本机示例预览，未调用 AI。' : '');
@@ -292,7 +295,8 @@ export default function App() {
         if (rows.length > 2000) throw new Error('每次最多整理 2000 条，请拆分文件后再试。');
         setDrafts(rows);
       }
-      setDeckName(file.name.replace(/\.[^.]+$/, ''));
+      if (!importNameEdited.current && !pendingDeck)
+        setDeckName(file.name.replace(/\.[^.]+$/, '').slice(0, 100));
     } catch (error) {
       setImportError(error instanceof Error ? error.message : '无法读取文件，请尝试粘贴文本。');
     } finally {
@@ -940,6 +944,13 @@ export default function App() {
                       全部词库
                     </button>
                     <div>
+                      <button
+                        className="text-button"
+                        onClick={() => setRenaming({ id: currentDeck.id, name: currentDeck.name })}
+                      >
+                        <Pencil size={15} />
+                        重命名
+                      </button>
                       {currentDeck.pending.length > 0 && (
                         <button
                           className="pending-button"
@@ -1303,6 +1314,25 @@ export default function App() {
             <ChevronRight size={14} />
             <span>03 开始练习</span>
           </div>
+          <div className="import-name import-name-early">
+            <label className="field-label" htmlFor="deck-name">
+              词库名称
+            </label>
+            <div className="import-name-field">
+              <input
+                id="deck-name"
+                maxLength={100}
+                disabled={busy}
+                value={deckName}
+                placeholder="例如：第 2 单元、工作与职业"
+                onChange={(e) => {
+                  importNameEdited.current = true;
+                  setDeckName(e.target.value);
+                }}
+              />
+              <small>按单元或分类起名，保存后也可以修改。</small>
+            </div>
+          </div>
           {!drafts ? (
             <>
               <AiOptions
@@ -1362,17 +1392,6 @@ export default function App() {
                   {aiSummary}
                 </div>
               )}
-              <div className="import-name">
-                <label className="field-label" htmlFor="deck-name">
-                  词库名称
-                </label>
-                <input
-                  id="deck-name"
-                  maxLength={100}
-                  value={deckName}
-                  onChange={(e) => setDeckName(e.target.value)}
-                />
-              </div>
               <div className="notice">
                 <AlertCircle size={18} />
                 <span>
@@ -1548,6 +1567,51 @@ export default function App() {
             accept=".txt,.md,.csv,.xlsx,.docx,.pdf"
             onChange={upload}
           />
+        </Modal>
+      )}
+      {renaming && (
+        <Modal title="修改词库名称" onClose={() => setRenaming(null)}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = renaming.name.trim();
+              if (!name || name.length > 100) return;
+              setData((old) => ({
+                ...old,
+                decks: old.decks.map((d) => (d.id === renaming.id ? { ...d, name } : d)),
+              }));
+              setRenaming(null);
+              setToast('词库名称已更新。');
+            }}
+          >
+            <div className="rename-form">
+              <label className="field-label" htmlFor="rename-deck">
+                新的词库名称
+              </label>
+              <input
+                id="rename-deck"
+                autoFocus
+                maxLength={100}
+                placeholder="例如：第 2 单元、工作与职业"
+                value={renaming.name}
+                onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
+              />
+              <p>用单元、主题或分类来命名，方便找到想练习的内容。</p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="button secondary" onClick={() => setRenaming(null)}>
+                取消
+              </button>
+              <button
+                type="submit"
+                className="button primary"
+                disabled={!renaming.name.trim() || renaming.name.trim().length > 100}
+              >
+                保存名称
+                <Check size={16} />
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
       {edit && (

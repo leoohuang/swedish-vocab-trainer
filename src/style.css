@@ -3928,3 +3928,60 @@ summary {
     transition: none !important;
   }
 }
+.import-name-early {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  background: #fafbf5;
+}
+.import-name-early > .field-label {
+  padding-top: 13px;
+}
+.import-name-field {
+  flex: 1;
+  min-width: 0;
+}
+.import-name-field > small {
+  display: block;
+  margin-top: 8px;
+  font-size: 10px;
+  color: #748569;
+  line-height: 1.8;
+}
+.rename-form {
+  padding: 25px 30px;
+}
+.rename-form .field-label {
+  margin: 0 0 10px;
+}
+.rename-form > input {
+  display: block;
+  width: 100%;
+  border: 1px solid #dce3d2;
+  border-radius: 5px;
+  padding: 12px 14px;
+  background: #fffefa;
+  font-size: 14px;
+}
+.rename-form > p {
+  font-size: 11px;
+  line-height: 1.9;
+  color: #788a6d;
+  margin-top: 13px;
+}
+@media (max-width: 540px) {
+  .rename-form {
+    padding: 20px;
+  }
+  .rename-form > input {
+    font-size: 13px;
+  }
+  .rename-form > p {
+    font-size: 10px;
+  }
+  .import-name-field > small {
+    font-size: 9px;
+  }
+  .import-name-early > .field-label {
+    padding-top: 12px;
+  }
+}
