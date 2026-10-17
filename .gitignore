@@ -1,0 +1,24 @@
+# Dependencies and build outputs
+node_modules/
+dist/
+coverage/
+.DS_Store
+*.log
+
+# Credentials
+.env
+.env.*
+!.env.example
+
+# Private user data; synthetic fixtures may live elsewhere
+uploads/
+private-data/
+local-data/
+*.sqlite
+*.sqlite3
+*.db
+
+# Local verification artifacts
+test-results/
+playwright-report/
+*.tsbuildinfo
