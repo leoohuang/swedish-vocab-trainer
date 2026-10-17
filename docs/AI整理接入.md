@@ -19,7 +19,7 @@
 
 ```dotenv
 OPENAI_API_KEY=填写自己的API密钥
-OPENAI_MODEL=gpt-5-mini
+OPENAI_MODEL=gpt-4.1-mini
 OPENAI_BASE_URL=https://api.openai.com/v1
 AI_API_STYLE=responses
 ```
@@ -28,7 +28,7 @@ AI_API_STYLE=responses
 
 默认使用 OpenAI Responses API 及 JSON Schema 结构化输出，`store: false`。模型名可修改为账户中可用且支持结构化输出的模型。其他兼容服务可以更换 `OPENAI_BASE_URL`，并在需要时把 `AI_API_STYLE` 改为 `chat`，使用 Chat Completions JSON Schema；并非所有标称兼容的服务都支持严格 JSON Schema，需对实际服务验证。
 
-文档依据：[OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses)、[GPT-5 Mini](https://developers.openai.com/api/docs/models/gpt-5-mini)。这些说明不能证明当前账户有模型访问权限。
+文档依据：[OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses)、[GPT-4.1 Mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini)。这些说明不能证明当前账户有模型访问权限。
 
 运行：
 
@@ -56,4 +56,6 @@ npm run dev
 
 ## 目前验证状态
 
-接口、参数、来源检查、数据保存和浏览器交互使用合成数据及模拟模型响应验证。当前开发环境没有 API 密钥，尚未发生真实模型请求。不能把模拟测试通过视为模型整理效果或模型账户权限已经验证。配置服务后，需要以真实单词合集、课文和混合笔记各试一份，核对遗漏、释义、词形和推荐词的难度。
+接口、参数、来源检查、数据保存和浏览器交互有合成数据及模拟模型响应测试。现已使用配置的 API 服务完成小型合成材料的真实调用测试，默认模型改为已验证可调用的 `gpt-4.1-mini`。这只验证本机当前账户与样本的调用路径，不保证其他账户权限，也不代表复杂文件整理质量已达标。真实学习材料仍需核对遗漏、释义、词形和推荐难度。
+
+如果密钥已配置但模型返回组织认证要求，需要在 OpenAI 控制台完成认证或选择账户可用的其他模型。服务端会区分组织认证、模型权限、密钥失效、额度不足和接口路径错误；不把模型可见于列表等同于已经可以调用。

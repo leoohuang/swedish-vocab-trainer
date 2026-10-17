@@ -233,6 +233,18 @@ export default function App() {
       .then(setAiState)
       .catch(() => setAiState(null));
   }
+  useEffect(() => {
+    if (!importing) return;
+    const refresh = () => {
+      if (document.visibilityState === 'visible') refreshAiStatus();
+    };
+    const timer = window.setInterval(refresh, 10000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [importing]);
   function openImport(example = false, d?: Deck) {
     setAiOptions({ ...defaultOptions(), engine: example ? 'local' : 'ai' });
     setBlocks(null);

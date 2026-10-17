@@ -26,7 +26,7 @@ export function loadAiConfig(): AiConfig {
   const env = { ...local, ...process.env };
   return {
     key: env.OPENAI_API_KEY?.trim() || '',
-    model: env.OPENAI_MODEL?.trim() || 'gpt-5-mini',
+    model: env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini',
     baseURL: (env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1').replace(/\/$/, ''),
     style: env.AI_API_STYLE === 'chat' ? 'chat' : 'responses',
   };
@@ -119,15 +119,38 @@ export async function callModel(
     throw new AiError(502, '无法连接模型服务，请检查服务地址和网络。');
   }
   if (!response.ok) {
-    await response.body?.cancel();
-    throw new AiError(
-      response.status === 401 || response.status === 403 ? 503 : 502,
-      response.status === 401 || response.status === 403
-        ? '模型密钥或访问权限无效，请检查服务端配置。'
-        : response.status === 429
-          ? '模型服务当前限流或额度不足，请稍后重试或检查账户。'
-          : '模型服务请求失败，请检查模型名称、接口格式和服务状态。',
-    );
+    let code = '',
+      message = '';
+    try {
+      const body = (await response.json()) as { error?: { code?: unknown; message?: unknown } };
+      code = typeof body.error?.code === 'string' ? body.error.code : '';
+      message = typeof body.error?.message === 'string' ? body.error.message : '';
+    } catch {}
+    // Classify provider errors without forwarding raw messages, which may contain credentials.
+    if (/organization.{0,35}verif|verify.{0,25}organization/i.test(message))
+      throw new AiError(
+        503,
+        '当前模型需要完成 OpenAI 组织认证。请完成认证后重试，或将 OPENAI_MODEL 改为账户可用的模型（例如 gpt-4.1-mini）。',
+      );
+    if (response.status === 401)
+      throw new AiError(503, 'API 密钥无效或已失效，请检查服务端 OPENAI_API_KEY。');
+    if (response.status === 403)
+      throw new AiError(503, '当前密钥没有模型访问权限，请检查模型权限或更换 OPENAI_MODEL。');
+    if (code === 'model_not_found')
+      throw new AiError(503, '模型不存在或当前密钥没有访问权限，请检查或更换服务端 OPENAI_MODEL。');
+    if (code === 'insufficient_quota')
+      throw new AiError(503, 'API 账户额度不足，请检查 API 账户余额和项目预算后重试。');
+    if (response.status === 429)
+      throw new AiError(429, '模型服务当前限流或额度不足，请稍后重试或检查账户。');
+    if (response.status === 404)
+      throw new AiError(
+        502,
+        '模型接口地址未找到，请检查 OPENAI_BASE_URL 是否包含正确的 API 路径（如 /v1）。',
+      );
+    if (code === 'invalid_json_schema' || code === 'unsupported_parameter')
+      throw new AiError(502, '模型服务不接受当前结构化输出配置，请检查所选模型和兼容接口。');
+    if (response.status >= 500) throw new AiError(502, '模型服务暂时不可用，请稍后重试。');
+    throw new AiError(502, '模型服务拒绝了请求，请检查模型名称、接口格式和服务配置。');
   }
   const raw = (await response.json()) as {
     status?: string;

@@ -122,3 +122,22 @@ test('上传课文保留全文，合集模式不显示词数限制', async ({ pa
   }
   await page.screenshot({ path: 'test-results/ai-import-mobile.png' });
 });
+
+test('填写密钥后回到窗口会刷新配置状态，无须重开材料', async ({ page }) => {
+  let configured = false;
+  await page.route('**/api/ai/status', (r) =>
+    r.fulfill({
+      json: { configured, provider: 'api.openai.com', model: 'gpt-4.1-mini', style: 'responses' },
+    }),
+  );
+  await page.goto('/');
+  await page.getByRole('button', { name: '导入我的单词' }).click();
+  await expect(page.getByText(/尚未配置 AI 密钥/)).toBeVisible();
+  await page.getByLabel('你的学习材料').fill(lesson);
+  await page.getByRole('checkbox', { name: /同意将本次材料文字/ }).check();
+  await expect(page.getByRole('button', { name: '用 AI 整理', exact: true })).toBeDisabled();
+  configured = true;
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(page.getByRole('button', { name: '用 AI 整理', exact: true })).toBeEnabled();
+  await expect(page.getByLabel('你的学习材料')).toHaveValue(lesson);
+});

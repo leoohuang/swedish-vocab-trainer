@@ -286,3 +286,44 @@ describe('本机服务接口', () => {
     );
   });
 });
+
+describe('模型权限与安全错误提示', () => {
+  const failure = (status: number, code: string, message: string) => async () =>
+    new Response(JSON.stringify({ error: { code, message } }), { status });
+  it('组织未认证的 404 不能误报为密钥未配置或笼统服务失败', async () => {
+    await expect(
+      callModel(
+        config,
+        request,
+        blocks,
+        failure(404, 'model_not_found', 'Your organization must be verified to use the model.'),
+      ),
+    ).rejects.toThrow('组织认证');
+  });
+  it('区分模型无权限、API 余额和接口地址错误', async () => {
+    await expect(
+      callModel(config, request, blocks, failure(404, 'model_not_found', 'Not available')),
+    ).rejects.toThrow('模型不存在或当前密钥没有访问权限');
+    await expect(
+      callModel(config, request, blocks, failure(429, 'insufficient_quota', 'Quota exhausted')),
+    ).rejects.toThrow('账户额度不足');
+    await expect(callModel(config, request, blocks, failure(404, '', 'Not found'))).rejects.toThrow(
+      '接口地址未找到',
+    );
+  });
+  it('不向浏览器转发包含密钥的上游错误原文', async () => {
+    let message = '';
+    try {
+      await callModel(
+        config,
+        request,
+        blocks,
+        failure(401, 'invalid_api_key', `Invalid key ${config.key}`),
+      );
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain('密钥无效');
+    expect(message).not.toContain(config.key);
+  });
+});
