@@ -123,16 +123,21 @@ export async function loadData(): Promise<Data> {
 }
 // Serialize this tab's writes and compare inside an IndexedDB transaction across tabs.
 let writes = Promise.resolve();
+let pendingWrite: Data | undefined;
 export function saveData(data: Data): Promise<void> {
+  pendingWrite = data;
   const next = writes
     .catch(() => {})
     .then(async () => {
-      const snapshot = JSON.stringify(validateData(data));
+      const latest = pendingWrite;
+      if (!latest) return;
+      pendingWrite = undefined;
+      const snapshot = JSON.stringify(validateData(latest));
       if (snapshot === baseline) return;
       await update(KEY, (value: unknown) => {
         const current = JSON.stringify(value ? validateData(value) : emptyData());
         if (baseline === undefined || current !== baseline) throw new StorageConflictError();
-        return data;
+        return latest;
       });
       baseline = snapshot;
     });

@@ -170,6 +170,7 @@ test('实际完成第一组十个词后，下一次开始默认第二组', async
     await page.getByRole('button', { name: '继续', exact: true }).click();
   }
   await expect(page.getByRole('heading', { name: '今天，又前进了一点。' })).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
   await page.getByRole('button', { name: '回到词库' }).click();
   await page.reload();
   await page.getByRole('button', { name: '我的词库' }).click();
