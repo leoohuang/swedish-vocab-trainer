@@ -62,7 +62,8 @@ import {
   wordKey,
 } from './model';
 import type { Data, Deck, Draft, Session, Word } from './model';
-import { download, loadData, saveData, validateData } from './storage';
+import { download, loadData, saveData, validateData, StorageConflictError } from './storage';
+import { mergeBackup } from './backup';
 
 const dateLabel = () =>
   new Intl.DateTimeFormat('sv-SE', { month: 'long', day: 'numeric' }).format(new Date());
@@ -163,6 +164,7 @@ export default function App() {
     [draftSearch, setDraftSearch] = useState('');
   const fileRef = useRef<HTMLInputElement>(null),
     backupRef = useRef<HTMLInputElement>(null),
+    mergeBackupRef = useRef<HTMLInputElement>(null),
     spellRef = useRef<HTMLInputElement>(null);
   const loadFailed = useRef(false);
   const lastPlayedFeedback = useRef('');
@@ -202,7 +204,13 @@ export default function App() {
     if (ready && !loadFailed.current) {
       saveData(data)
         .then(() => setSaveError(''))
-        .catch(() => setSaveError('保存失败：请先导出备份，并检查浏览器存储空间。'));
+        .catch((error: unknown) =>
+          setSaveError(
+            error instanceof StorageConflictError
+              ? error.message
+              : '保存失败：请先导出备份，并检查浏览器存储空间。',
+          ),
+        );
     }
   }, [data, ready]);
   useEffect(() => {
@@ -450,7 +458,7 @@ export default function App() {
     setFilter('all');
     setSearch('');
     setToast(
-      `已加入 ${words.length} 个词${pending.length ? `，${pending.length} 条留在待整理` : ''}${duplicates ? `，合并 ${duplicates} 条重复内容并保留备注` : ''}。`,
+      `${pendingDeck ? '已更新词库' : `已新建词库「${deckName.trim()}」，原有词库已保留`}，加入 ${words.length} 个词${pending.length ? `，${pending.length} 条留在待整理` : ''}${duplicates ? `，合并 ${duplicates} 条重复内容并保留备注` : ''}。`,
     );
   }
   const allGroups = studyGroups(data.words, data.decks);
@@ -540,12 +548,25 @@ export default function App() {
       'text/csv;charset=utf-8',
     );
   }
-  async function restore(e: ChangeEvent<HTMLInputElement>) {
+  async function restore(e: ChangeEvent<HTMLInputElement>, merge = false) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
       if (file.size > 25 * 1024 * 1024) throw new Error('备份文件超过 25 MB。');
       const restored = validateData(JSON.parse(await file.text()));
+      if (merge) {
+        const merged = mergeBackup(data, restored);
+        await saveData(merged);
+        setData(merged);
+        setDeckId(null);
+        setPage('library');
+        setSearch('');
+        setFilter('all');
+        setToast(
+          `备份已合并，新增 ${merged.decks.length - data.decks.length} 个词库；原有词库和进度已保留。`,
+        );
+        return;
+      }
       if (
         !window.confirm(
           `恢复 ${restored.decks.length} 个词库、${restored.words.length} 个词？这会替换本机当前记录，建议先导出备份。`,
@@ -559,8 +580,12 @@ export default function App() {
       setTraining(false);
       setDeckId(null);
       setToast('备份已恢复。');
-    } catch {
-      setToast('恢复失败：请使用这个工具导出的完整 JSON 备份，原有数据未改变。');
+    } catch (error) {
+      setToast(
+        error instanceof StorageConflictError
+          ? error.message
+          : '恢复失败：请使用这个工具导出的完整 JSON 备份，原有数据未改变。',
+      );
     } finally {
       e.target.value = '';
     }
@@ -914,6 +939,28 @@ export default function App() {
                     导入单词
                   </button>
                 </div>
+                {data.decks.length > 0 && (
+                  <label className="deck-switcher">
+                    <span>切换词库（共 {data.decks.length} 个）</span>
+                    <select
+                      aria-label="切换词库"
+                      value={deckId || ''}
+                      onChange={(e) => {
+                        setDeckId(e.target.value || null);
+                        setSearch('');
+                        setFilter('all');
+                      }}
+                    >
+                      <option value="">全部词库 · {data.words.length} 个词</option>
+                      {data.decks.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name} · {data.words.filter((w) => w.deckId === d.id).length} 个词
+                        </option>
+                      ))}
+                    </select>
+                    <small>导入新材料会新建独立词库，已有词库和学习进度会保留。</small>
+                  </label>
+                )}
                 {!deckId && (
                   <div className="deck-grid library-decks">
                     {data.decks.map((d, i) => (
@@ -938,6 +985,7 @@ export default function App() {
                       onClick={() => {
                         setDeckId(null);
                         setSearch('');
+                        setFilter('all');
                       }}
                     >
                       <ArrowLeft size={15} />
@@ -1229,7 +1277,9 @@ export default function App() {
                   <div>
                     <span className="eyebrow">MAKE YOURSELF AT HOME</span>
                     <h1>你的词，也由你保管。</h1>
-                    <p>当前是本机试用版。换浏览器或清除网站数据前，请先导出备份。</p>
+                    <p>
+                      词库保存在当前浏览器和网址中。本地测试页与线上网站的数据独立，可通过备份合并迁移。
+                    </p>
                   </div>
                 </div>
                 <div className="settings-grid">
@@ -1257,6 +1307,20 @@ export default function App() {
                         导出 CSV
                       </button>
                     </div>
+                  </article>
+                  <article className="setting-card">
+                    <Upload size={28} />
+                    <h2>合并导入备份</h2>
+                    <p>
+                      从本地测试页或其他浏览器导出的 JSON
+                      中新增词库，保留词条和学习进度。已有词库不会被覆盖，重复导入会跳过。
+                    </p>
+                    <button
+                      className="button secondary"
+                      onClick={() => mergeBackupRef.current?.click()}
+                    >
+                      合并导入备份
+                    </button>
                   </article>
                   <article className="setting-card">
                     <RotateCcw size={28} />
@@ -1298,7 +1362,14 @@ export default function App() {
           </div>
         )}
       </main>
-      <input type="file" accept=".json" hidden ref={backupRef} onChange={restore} />
+      <input type="file" accept=".json" hidden ref={backupRef} onChange={(e) => void restore(e)} />
+      <input
+        type="file"
+        accept=".json,application/json"
+        hidden
+        ref={mergeBackupRef}
+        onChange={(e) => void restore(e, true)}
+      />
       {toast && (
         <div role="status" className="toast">
           <CheckCircle2 size={18} />
@@ -1330,7 +1401,11 @@ export default function App() {
                   setDeckName(e.target.value);
                 }}
               />
-              <small>按单元或分类起名，保存后也可以修改。</small>
+              <small>
+                {pendingDeck
+                  ? '正在整理此词库的待确认词条，学习进度会保留。'
+                  : `将新建一个独立词库，保留已有的 ${data.decks.length} 个词库和学习进度。同名词库也不会被覆盖。`}
+              </small>
             </div>
           </div>
           {!drafts ? (

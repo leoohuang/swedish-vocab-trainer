@@ -1,6 +1,6 @@
 import { withWordGroups } from './groups';
 import { aiEvidence } from '../shared/ai';
-import { get, set } from 'idb-keyval';
+import { get, update } from 'idb-keyval';
 import { z } from 'zod';
 import { emptyData } from './model';
 import type { Data } from './model';
@@ -107,14 +107,35 @@ export function validateData(raw: unknown): Data {
   return withWordGroups(d);
 }
 const KEY = 'ord-data-v1';
+let baseline: string | undefined;
+export class StorageConflictError extends Error {
+  constructor() {
+    super(
+      '另一个标签页已更新词库。为避免覆盖，当前修改尚未保存；请先导出当前备份，再刷新查看已保存的词库。',
+    );
+  }
+}
 export async function loadData(): Promise<Data> {
   const value = await get(KEY);
-  return value ? validateData(value) : emptyData();
+  const data = value ? validateData(value) : emptyData();
+  baseline = JSON.stringify(data);
+  return data;
 }
-// Serialize writes, so an older interaction cannot overwrite a newer one.
+// Serialize this tab's writes and compare inside an IndexedDB transaction across tabs.
 let writes = Promise.resolve();
 export function saveData(data: Data): Promise<void> {
-  const next = writes.catch(() => {}).then(() => set(KEY, data));
+  const next = writes
+    .catch(() => {})
+    .then(async () => {
+      const snapshot = JSON.stringify(validateData(data));
+      if (snapshot === baseline) return;
+      await update(KEY, (value: unknown) => {
+        const current = JSON.stringify(value ? validateData(value) : emptyData());
+        if (baseline === undefined || current !== baseline) throw new StorageConflictError();
+        return data;
+      });
+      baseline = snapshot;
+    });
   writes = next;
   return next;
 }
