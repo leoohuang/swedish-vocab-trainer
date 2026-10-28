@@ -41,31 +41,55 @@ try {
       reject(new Error(`Server exited ${code}: ${output}`));
     });
   });
-  const get = (path, headers = {}) =>
+  const get = (path, headers = {}, body = undefined) =>
     new Promise((resolve, reject) => {
-      const req = httpRequest(base + path, { headers }, (res) => {
-        let body = '';
-        res.setEncoding('utf8');
-        res.on('data', (chunk) => {
-          body += chunk;
-        });
-        res.on('end', () =>
-          resolve({
-            status: res.statusCode,
-            text: async () => body,
-            json: async () => JSON.parse(body),
-          }),
-        );
-      });
+      const req = httpRequest(
+        base + path,
+        { headers, method: body === undefined ? 'GET' : 'POST' },
+        (res) => {
+          let body = '';
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => {
+            body += chunk;
+          });
+          res.on('end', () =>
+            resolve({
+              status: res.statusCode,
+              headers: res.headers,
+              text: async () => body,
+              json: async () => JSON.parse(body),
+            }),
+          );
+        },
+      );
       req.on('error', reject);
-      req.end();
+      req.end(body);
     });
   assert.equal((await get('/healthz')).status, 200);
-  assert.equal((await get('/')).status, 401);
+  assert.match(await (await get('/')).text(), /网站访问密码/);
   assert.equal((await get('/api/ai/status')).status, 401);
-  const headers = {
-    authorization: `Basic ${Buffer.from('ord:synthetic-test-password').toString('base64')}`,
-  };
+  const formHeaders = { origin: base, 'content-type': 'application/x-www-form-urlencoded' };
+  assert.equal(
+    (
+      await get(
+        '/login',
+        { ...formHeaders, origin: 'https://other.example.com' },
+        'username=ord&password=synthetic-test-password',
+      )
+    ).status,
+    403,
+  );
+  assert.equal((await get('/login', formHeaders, 'username=ord&password=wrong')).status, 401);
+  const login = await get('/login', formHeaders, 'username=ord&password=synthetic-test-password');
+  assert.equal(login.status, 303);
+  const cookie = login.headers['set-cookie'][0];
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /SameSite=Lax/);
+  const session = cookie.split(';')[0];
+  assert.match(await (await get('/', { cookie: session })).text(), /<div id="root">/);
+  assert.equal((await get('/api/ai/status', { cookie: session })).status, 200);
+  assert.equal((await get('/api/ai/status', { cookie: session + 'tampered' })).status, 401);
+  const headers = { cookie: session };
   const page = await get('/', headers);
   assert.equal(page.status, 200);
   assert.match(await page.text(), /<div id="root">/);
@@ -79,14 +103,7 @@ try {
     (await get('/api/ai/status', { ...headers, host: 'wrong.example.com' })).status,
     403,
   );
-  assert.equal(
-    (
-      await get('/', {
-        authorization: `Basic ${Buffer.from('ord:wrong-password').toString('base64')}`,
-      })
-    ).status,
-    401,
-  );
+
   console.log(
     'Standalone checks passed: website, health, password, AI status, allowed host, private file isolation.',
   );
