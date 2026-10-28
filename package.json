@@ -5,13 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "npm run build:client && node scripts/build-worker.mjs",
+    "build": "npm run build:standalone",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "start": "tsx server/start.ts",
-    "build:client": "tsc -b && vite build"
+    "build:client": "node scripts/build-client.mjs",
+    "build:standalone": "npm run build:client && node scripts/build-standalone.mjs",
+    "build:sites": "npm run build:client && node scripts/build-worker.mjs",
+    "verify:standalone": "node scripts/verify-standalone.mjs"
   },
   "dependencies": {
     "idb-keyval": "^6.3.0",

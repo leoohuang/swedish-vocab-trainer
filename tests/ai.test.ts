@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { aiRequest, modelResult } from '../shared/ai';
 import type { AiRequest, ModelResult } from '../shared/ai';
@@ -11,6 +11,7 @@ import {
   extractVocabulary,
   groundResults,
   promptFor,
+  publicSiteOrigin,
 } from '../server/ai';
 import { materialBlocks, readMaterial } from '../src/parser';
 import { emptyData } from '../src/model';
@@ -66,9 +67,10 @@ function upstream(value: ModelResult) {
 async function withServer(
   run: (base: string, fetcher: ReturnType<typeof upstream>) => Promise<void>,
   cfg = config,
+  publicOrigin = '',
 ) {
   const fetcher = upstream(result());
-  const handler = createAiHandler(() => cfg, fetcher);
+  const handler = createAiHandler(() => cfg, fetcher, publicOrigin);
   const server = createServer((req, res) => {
     void handler(req, res, () => {
       res.writeHead(404).end();
@@ -325,5 +327,79 @@ describe('模型权限与安全错误提示', () => {
     }
     expect(message).toContain('密钥无效');
     expect(message).not.toContain(config.key);
+  });
+});
+
+async function hostedRequest(url: string, headers: Record<string, string>, body?: string) {
+  return new Promise<{ status: number; text: () => Promise<string> }>((resolve, reject) => {
+    const req = httpRequest(url, { method: body ? 'POST' : 'GET', headers }, (res) => {
+      let text = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => {
+        text += chunk;
+      });
+      res.on('end', () => resolve({ status: res.statusCode!, text: async () => text }));
+    });
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+describe('独立网站的 AI 来源限制', () => {
+  it('读取平台实际分配的网址，自定义域名设置优先', () => {
+    expect(publicSiteOrigin({})).toBe('');
+    expect(publicSiteOrigin({ RENDER_EXTERNAL_URL: 'https://assigned.onrender.com' })).toBe(
+      'https://assigned.onrender.com',
+    );
+    expect(
+      publicSiteOrigin({
+        RENDER_EXTERNAL_URL: 'https://assigned.onrender.com',
+        PUBLIC_ORIGIN: 'https://words.example.com',
+      }),
+    ).toBe('https://words.example.com');
+  });
+  it('只接受配置的独立域名，不要求 ChatGPT 登录', async () => {
+    await withServer(
+      async (base, fetcher) => {
+        const headers = {
+          host: 'words.example.com',
+          origin: 'https://words.example.com',
+          'content-type': 'application/json',
+        };
+        const status = await hostedRequest(`${base}/api/ai/status`, headers);
+        expect(status.status).toBe(200);
+        expect(await status.text()).not.toContain(config.key);
+        const response = await hostedRequest(
+          `${base}/api/ai/extract`,
+          headers,
+          JSON.stringify(request),
+        );
+        expect(response.status).toBe(200);
+        expect(fetcher).toHaveBeenCalledOnce();
+      },
+      config,
+      'https://words.example.com',
+    );
+  });
+  it('拒绝未知主机、跨站来源、同域 HTTP 降级和缺少来源的整理请求', async () => {
+    await withServer(
+      async (base, fetcher) => {
+        for (const headers of [
+          { host: 'wrong.example.com', origin: 'https://words.example.com' },
+          { host: 'words.example.com', origin: 'https://other.example.com' },
+          { host: 'words.example.com', origin: 'http://words.example.com' },
+          { host: 'words.example.com' },
+        ]) {
+          const response = await hostedRequest(
+            `${base}/api/ai/extract`,
+            { ...headers, 'content-type': 'application/json' } as Record<string, string>,
+            JSON.stringify(request),
+          );
+          expect(response.status).toBe(403);
+        }
+        expect(fetcher).not.toHaveBeenCalled();
+      },
+      config,
+      'https://words.example.com',
+    );
   });
 });

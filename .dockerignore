@@ -1,0 +1,17 @@
+.git
+.env
+.env.*
+node_modules
+dist
+standalone
+.openai
+.sites-runtime
+private-data
+local-data
+uploads
+test-results
+playwright-report
+coverage
+*.log
+*.sqlite*
+*.db

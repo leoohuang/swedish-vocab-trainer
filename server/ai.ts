@@ -14,6 +14,9 @@ export {
   promptFor,
 } from '../shared/extraction.ts';
 export type { AiConfig } from '../shared/extraction.ts';
+export function publicSiteOrigin(env: Record<string, string | undefined> = process.env): string {
+  return env.PUBLIC_ORIGIN || env.RENDER_EXTERNAL_URL || '';
+}
 export function loadAiConfig(): AiConfig {
   let local: Record<string, string | undefined> = {};
   for (const filename of ['.env', '.env.local'])
@@ -39,7 +42,12 @@ function json(res: ServerResponse, status: number, value: unknown) {
   });
   res.end(JSON.stringify(value));
 }
-export function createAiHandler(getConfig = loadAiConfig, fetcher: typeof fetch = fetch) {
+export function createAiHandler(
+  getConfig = loadAiConfig,
+  fetcher: typeof fetch = fetch,
+  publicOrigin = publicSiteOrigin(),
+) {
+  const allowedOrigin = publicOrigin ? new URL(publicOrigin).origin : '';
   let active = 0;
   const calls: number[] = [];
   return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
@@ -51,8 +59,11 @@ export function createAiHandler(getConfig = loadAiConfig, fetcher: typeof fetch 
     const host = req.headers.host || '';
     const origin = req.headers.origin;
     try {
-      if (!['127.0.0.1', 'localhost', '[::1]'].includes(new URL(`http://${host}`).hostname)) {
-        json(res, 403, { error: '此试用接口仅支持本机访问。' });
+      const validHost = allowedOrigin
+        ? new URL(allowedOrigin).host === host
+        : ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(`http://${host}`).hostname);
+      if (!validHost) {
+        json(res, 403, { error: '请求主机不在当前网站的允许范围内。' });
         return;
       }
     } catch {
@@ -61,7 +72,9 @@ export function createAiHandler(getConfig = loadAiConfig, fetcher: typeof fetch 
     }
     if (origin) {
       try {
-        if (new URL(origin).host !== host) {
+        if (
+          allowedOrigin ? new URL(origin).origin !== allowedOrigin : new URL(origin).host !== host
+        ) {
           json(res, 403, { error: '只允许从当前页面调用 AI 接口。' });
           return;
         }
@@ -69,6 +82,10 @@ export function createAiHandler(getConfig = loadAiConfig, fetcher: typeof fetch 
         json(res, 403, { error: '请求来源无效。' });
         return;
       }
+    }
+    if (allowedOrigin && req.method === 'POST' && !origin) {
+      json(res, 403, { error: '请从当前网站发起整理请求。' });
+      return;
     }
     try {
       const config = getConfig();
