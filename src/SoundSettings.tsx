@@ -1,4 +1,5 @@
 import { Volume2 } from 'lucide-react';
+import { SoundCheck } from './SoundCheck';
 import type { AudioSettings } from './audio';
 export function SoundSettings({
   settings,
@@ -43,6 +44,9 @@ export function SoundSettings({
       {content}
     </details>
   ) : (
-    content
+    <>
+      {content}
+      <SoundCheck />
+    </>
   );
 }

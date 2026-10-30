@@ -173,8 +173,26 @@ export default function App() {
   const loadFailed = useRef(false);
   const lastPlayedFeedback = useRef('');
   const speechErrorShown = useRef(false);
+  const audioErrorShown = useRef(false);
   const audioSettings = { ...DEFAULT_AUDIO, ...data.audio };
+  function reportAudioError(message: string) {
+    if (!audioErrorShown.current) {
+      audioErrorShown.current = true;
+      setToast(message);
+    }
+  }
+  useEffect(() => {
+    if (!audioSettings.typingSound && !audioSettings.answerSound) return;
+    const activate = () => unlockAudio();
+    document.addEventListener('pointerdown', activate, true);
+    document.addEventListener('keydown', activate, true);
+    return () => {
+      document.removeEventListener('pointerdown', activate, true);
+      document.removeEventListener('keydown', activate, true);
+    };
+  }, [audioSettings.typingSound, audioSettings.answerSound]);
   function updateAudio(patch: Partial<AudioSettings>) {
+    audioErrorShown.current = false;
     if (patch.autoPronounce === false) stopSpeech();
     unlockAudio();
     setData((old) => ({ ...old, audio: { ...DEFAULT_AUDIO, ...old.audio, ...patch } }));
@@ -537,6 +555,7 @@ export default function App() {
     unlockAudio();
     stopSpeech();
     speechErrorShown.current = false;
+    audioErrorShown.current = false;
     const next = createSession(words, data.words);
     setData((old) => ({ ...old, session: next }));
     setPicking(false);
@@ -550,7 +569,8 @@ export default function App() {
       const task = next.tasks[next.position],
         word = data.words.find((w) => w.id === task.wordId);
       const assessed = task.type === 'spell' || !!task.options?.length;
-      if (assessed && audioSettings.answerSound) answerSound(next.feedback.correct);
+      if (assessed && audioSettings.answerSound)
+        answerSound(next.feedback.correct, reportAudioError);
       if (next.feedback.correct && audioSettings.autoPronounce && word)
         speak(word.term, (msg) => {
           if (!speechErrorShown.current) {
@@ -2201,7 +2221,7 @@ function Practice({
     return () => window.removeEventListener('keydown', key);
   }, [s.feedback, s.position, isSpell, task.options, onNext, onAnswer]);
   function insert(char: string) {
-    if (audioSettings.typingSound) typingSound();
+    if (audioSettings.typingSound) typingSound(onToast);
     const input = spellRef.current;
     const start = input?.selectionStart ?? s.input.length,
       end = input?.selectionEnd ?? start;
@@ -2274,7 +2294,7 @@ function Practice({
                     !e.metaKey &&
                     (e.key.length === 1 || ['Backspace', 'Delete'].includes(e.key))
                   )
-                    typingSound();
+                    typingSound(onToast);
                 }}
                 onChange={(e) => {
                   const native = e.nativeEvent as InputEvent;
@@ -2284,7 +2304,7 @@ function Practice({
                     native.inputType &&
                     /^(insertText|delete)/.test(native.inputType)
                   )
-                    typingSound();
+                    typingSound(onToast);
                   onUpdate({ ...s, input: e.target.value });
                 }}
               />

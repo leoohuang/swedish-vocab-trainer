@@ -4148,3 +4148,33 @@ summary {
     margin-right: 18px;
   }
 }
+.sound-check {
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+  padding-top: 18px;
+}
+.sound-check-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.sound-check-buttons .button {
+  padding: 10px 8px;
+  min-width: 0;
+  font-size: 12px;
+}
+.sound-check-state {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #6b7769;
+  overflow-wrap: anywhere;
+  margin: 10px 0 0;
+}
+.sound-check-message {
+  padding: 12px;
+  background: #eef2e8;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 12px 0 0;
+}
