@@ -88,15 +88,15 @@ describe('拼写和练习状态', () => {
     const s = createSession([w], [w]);
     expect(s.tasks[0].options).toEqual([]);
   });
-  it('提示后的正确不算独立正确，错误回练且有上限', () => {
+  it('提示后的正确不算独立正确，反复练习不会提前结束', () => {
     let s = createSession([w], [w]);
     s = advanceSession(answerSession(s, w, '苹果'));
     let steps = 0;
     while (!s.finished && steps++ < 20) {
       s = advanceSession(answerSession({ ...s, hinted: true }, w, 'äpple'));
     }
-    expect(s.finished).toBe(true);
-    expect(s.scores[w.id]).toMatchObject({ wins: 0, tries: 4, hints: 4 });
+    expect(s.finished).toBe(false);
+    expect(s.scores[w.id]).toMatchObject({ wins: 0, tries: 20, hints: 20 });
   });
   it('只认对选择题不能获得拼写掌握，错词有机会再次独立答对', () => {
     let s = createSession([w], [w]);

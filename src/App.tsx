@@ -244,7 +244,7 @@ export default function App() {
   useEffect(() => {
     if (training && s && !s.finished && s.tasks[s.position]?.type === 'spell' && !s.feedback)
       spellRef.current?.focus();
-  }, [training, s?.position, s?.feedback]);
+  }, [training, s?.position, s?.turn, s?.feedback]);
   const currentDeck = data.decks.find((d) => d.id === deckId);
   const due = data.words.filter((w) => w.due !== null && w.due <= Date.now());
   const active = !!s && !s.finished;
@@ -563,7 +563,7 @@ export default function App() {
     setIntro(true);
   }
   function updateSession(next: Session) {
-    const eventKey = `${next.id}:${next.position}`;
+    const eventKey = `${next.id}:${next.turn ?? next.position}`;
     if (next.feedback && s && !s.feedback && lastPlayedFeedback.current !== eventKey) {
       lastPlayedFeedback.current = eventKey;
       const task = next.tasks[next.position],
@@ -1421,8 +1421,7 @@ export default function App() {
                     <h2>练习规则</h2>
                     <p>
                       每组固定 10 个词，默认继续未完成的组。å、ä、ö
-                      严格区分；冠词在提示中展示，拼写时输入词本身。每词两次独立拼写正确达到本轮目标，最多尝试
-                      4 次。复习从次日开始。
+                      严格区分；冠词在提示中展示，拼写时输入词本身。拼对一次后降低出现频率，独立拼对两次后本轮不再出现。未过关的词持续练习，直到全部过关；使用提示不计独立答对。复习从次日开始。
                     </p>
                   </article>
                 </div>
@@ -2219,7 +2218,7 @@ function Practice({
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, [s.feedback, s.position, isSpell, task.options, onNext, onAnswer]);
+  }, [s.feedback, s.position, s.turn, isSpell, task.options, onNext, onAnswer]);
   function insert(char: string) {
     if (audioSettings.typingSound) typingSound(onToast);
     const input = spellRef.current;
@@ -2238,15 +2237,20 @@ function Practice({
         <div>
           <span>{isSpell ? '02 / 拼写回忆' : '01 / 词义热身'}</span>
           <span>
-            第 {s.position + 1} 题 <span className="muted">· {s.ids.length} 个词</span>
+            已过关 {s.ids.filter((id) => s.scores[id].wins >= 2).length} / {s.ids.length} 个词
+            <span className="muted"> · 第 {(s.turn ?? s.position) + 1} 题</span>
           </span>
         </div>
         <div className="progress-track">
-          <span style={{ width: `${(s.position / s.tasks.length) * 100}%` }} />
+          <span
+            style={{
+              width: `${(s.ids.reduce((total, id) => total + Math.min(s.scores[id].wins, 2), 0) / (s.ids.length * 2)) * 100}%`,
+            }}
+          />
         </div>
       </div>
       <article
-        key={`${s.id}:${s.position}`}
+        key={`${s.id}:${s.turn ?? s.position}`}
         className={`practice-card ${s.feedback ? `has-feedback ${s.feedback.correct ? 'answer-correct' : 'answer-wrong'}` : ''}`}
       >
         <div className="practice-topline">
@@ -2438,7 +2442,7 @@ function Practice({
       <div className="practice-caption">
         <Leaf size={15} />
         {isSpell
-          ? `这个词已独立拼对 ${s.scores[word.id].wins} / 2 次 · 最多尝试 4 次`
+          ? `这个词已独立拼对 ${s.scores[word.id].wins} / 2 次 · ${s.scores[word.id].wins >= 2 ? '本轮已过关，不再出现' : s.scores[word.id].wins === 1 ? '已降低频率，再拼对一次即可过关' : '继续练习，直到独立拼对两次'}`
           : '认得出来，是记住它的第一步。'}
       </div>
     </div>

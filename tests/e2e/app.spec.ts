@@ -86,7 +86,9 @@ test('多词选择题答对后进入拼写，提示正确不计独立答对', as
   await page.getByRole('textbox', { name: '输入瑞典语答案' }).fill(term);
   await page.getByRole('button', { name: '检查答案' }).click();
   await expect(page.getByText('有提示也没关系，再独立试一次')).toBeVisible();
-  await expect(page.getByText('这个词已独立拼对 0 / 2 次 · 最多尝试 4 次')).toBeVisible();
+  await expect(
+    page.getByText('这个词已独立拼对 0 / 2 次 · 继续练习，直到独立拼对两次'),
+  ).toBeVisible();
 });
 test('桌面与手机布局没有横向溢出，导入弹窗可用', async ({ page }) => {
   await page.goto('/');

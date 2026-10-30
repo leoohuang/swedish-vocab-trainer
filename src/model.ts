@@ -35,6 +35,7 @@ export type Session = {
   ids: string[];
   tasks: Task[];
   position: number;
+  turn?: number;
   scores: Record<string, WordScore>;
   feedback: Feedback | null;
   hinted: boolean;
@@ -102,15 +103,12 @@ export function createSession(words: Word[], pool: Word[]): Session {
       options: distractors.length ? shuffle([w.meaning, ...distractors]) : [],
     };
   });
-  tasks.push(
-    ...shuffle(words).map((w) => ({ wordId: w.id, type: 'spell' as const })),
-    ...shuffle(words).map((w) => ({ wordId: w.id, type: 'spell' as const })),
-  );
   return {
     id: uid(),
     ids: words.map((w) => w.id),
     tasks,
     position: 0,
+    turn: 0,
     scores: Object.fromEntries(
       words.map((w) => [w.id, { wins: 0, tries: 0, misses: 0, hints: 0 }]),
     ),
@@ -140,26 +138,43 @@ export function answerSession(s: Session, word: Word, answer: string): Session {
   };
 }
 export function advanceSession(s: Session): Session {
-  const task = s.tasks[s.position];
-  let tasks = [...s.tasks];
-  if (task.type === 'spell') {
-    const score = s.scores[task.wordId];
-    const future = tasks
-      .slice(s.position + 1)
-      .filter((t) => t.wordId === task.wordId && t.type === 'spell').length;
-    if (score.wins + future < 2 && score.tries + future < 4)
-      tasks.push({ wordId: task.wordId, type: 'spell' });
+  if (s.finished || !s.feedback) return s;
+  // Keep unanswered warm-up questions when continuing an older saved session.
+  const choices = s.tasks
+    .slice(s.position + 1)
+    .filter((t) => t.type === 'choice' && s.scores[t.wordId].wins < 2);
+  const past = s.tasks.slice(0, s.position + 1);
+  const remaining = s.ids.filter((id) => s.scores[id].wins < 2);
+  let next: Task | undefined = choices[0];
+  if (!next && remaining.length) {
+    // Age / spacing is a deterministic weighted queue. Zero-win words return
+    // about twice as often as one-win words, while ageing prevents starvation.
+    const lastSeen = new Map<string, number>();
+    past.forEach((t, index) => {
+      if (t.type === 'spell') lastSeen.set(t.wordId, index);
+    });
+    const priority = (id: string) =>
+      (past.length - (lastSeen.get(id) ?? -1)) / (s.scores[id].wins + 1);
+    const id = [...remaining].sort(
+      (a, b) => priority(b) - priority(a) || s.scores[a].wins - s.scores[b].wins,
+    )[0];
+    next = { wordId: id, type: 'spell' };
   }
-  const position = s.position + 1;
+  // Retries are unlimited. Bound only the scheduling trace so long sessions
+  // remain small and continue to pass the existing backup validation limit.
+  const tasks = [...past.slice(-100), ...(next?.type === 'choice' ? choices : next ? [next] : [])];
+  const finished = !next;
+  const position = finished ? tasks.length : Math.min(past.length, 100);
   return {
     ...s,
     tasks,
     position,
+    turn: (s.turn ?? s.position) + 1,
     feedback: null,
     input: '',
     hinted: false,
-    finished: position >= tasks.length,
-    ...(position >= tasks.length ? { ended: Date.now() } : {}),
+    finished,
+    ...(finished ? { ended: Date.now() } : {}),
   };
 }
 export function finishSession(data: Data, s: Session): Data {

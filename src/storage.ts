@@ -75,6 +75,7 @@ const schema = z.object({
         .min(1)
         .max(200),
       position: z.number().int().nonnegative(),
+      turn: z.number().int().nonnegative().optional(),
       scores: z.record(id, score),
       feedback: z.object({ correct: z.boolean(), answer: str, assisted: z.boolean() }).nullable(),
       hinted: z.boolean(),
