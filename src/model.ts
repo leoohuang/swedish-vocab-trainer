@@ -25,6 +25,7 @@ export type Word = {
   due: number | null;
   interval: number;
   sessions: number;
+  passed?: boolean;
 };
 export type Deck = { id: string; name: string; created: number; pending: Draft[] };
 export type Task = { wordId: string; type: 'choice' | 'spell'; options?: string[] };
@@ -74,6 +75,25 @@ export const wordKey = (word: Pick<Word, 'term' | 'meaning'>) =>
   `${normalize(word.term)}\u0000${normalize(word.meaning)}`;
 export const spellingAnswer = (word: Pick<Word, 'term'>) =>
   word.term.replace(/^(en|ett)\s+/i, '').trim();
+export const hasPassed = (word: Pick<Word, 'passed'>) => word.passed === true;
+export const sessionPassed = (s: Session) =>
+  s.ids.length > 0 && s.ids.every((id) => (s.scores[id]?.wins ?? 0) >= 2);
+export function resumeIncompleteSession(s: Session): Session {
+  if (!s.finished || sessionPassed(s)) return s;
+  const wordId = s.ids.find((id) => (s.scores[id]?.wins ?? 0) < 2)!;
+  const past = s.tasks.slice(0, s.position).slice(-100);
+  const { ended: _ended, ...rest } = s;
+  return {
+    ...rest,
+    tasks: [...past, { wordId, type: 'spell' }],
+    position: past.length,
+    turn: s.turn ?? s.position,
+    finished: false,
+    feedback: null,
+    hinted: false,
+    input: '',
+  };
+}
 export function shuffle<T>(items: T[]): T[] {
   const result = [...items];
   for (let i = result.length - 1; i > 0; i--) {
@@ -122,6 +142,7 @@ export function createSession(words: Word[], pool: Word[]): Session {
 export function answerSession(s: Session, word: Word, answer: string): Session {
   if (s.finished || s.feedback) return s;
   const task = s.tasks[s.position];
+  if (!task || task.wordId !== word.id) return s;
   const correct =
     normalize(answer) === normalize(task.type === 'spell' ? spellingAnswer(word) : word.meaning);
   const score = { ...s.scores[word.id] };
@@ -178,7 +199,10 @@ export function advanceSession(s: Session): Session {
   };
 }
 export function finishSession(data: Data, s: Session): Data {
-  if (!s.finished || data.history.some((h) => h.id === s.id)) return { ...data, session: s };
+  if (!s.finished) return { ...data, session: s };
+  if (!sessionPassed(s)) return { ...data, session: resumeIncompleteSession(s) };
+  const recorded = data.history.find((h) => h.id === s.id);
+  if (recorded && recorded.completed === recorded.words) return { ...data, session: s };
   const now = s.ended || Date.now();
   return {
     ...data,
@@ -196,10 +220,16 @@ export function finishSession(data: Data, s: Session): Data {
               ? 7
               : Math.min(w.interval * 2, 60)
         : 1;
-      return { ...w, sessions: w.sessions + 1, interval, due: now + interval * 86400000 };
+      return {
+        ...w,
+        passed: true,
+        sessions: w.sessions + (recorded ? 0 : 1),
+        interval,
+        due: now + interval * 86400000,
+      };
     }),
     history: [
-      ...data.history,
+      ...data.history.filter((h) => h.id !== s.id),
       {
         id: s.id,
         date: now,

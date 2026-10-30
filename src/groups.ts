@@ -1,4 +1,5 @@
 import type { Data, Deck, Word } from './model';
+import { hasPassed } from './model';
 export const GROUP_SIZE = 10;
 export type StudyGroup = {
   key: string;
@@ -69,7 +70,7 @@ export function studyGroups(words: Word[], decks: Deck[], now = Date.now()): Stu
       result.set(key, group);
     }
     group.words.push(word);
-    if (!word.sessions) group.remaining.push(word);
+    if (!hasPassed(word)) group.remaining.push(word);
     if (word.due !== null && word.due <= now) group.dueCount++;
   }
   const order = new Map(

@@ -23,6 +23,7 @@ async function seed(page: import('@playwright/test').Page, count = 50, completed
       data.words = data.words.map((w: any, i: number) => ({
         ...w,
         sessions: i < completed ? 1 : 0,
+        passed: i < completed,
       }));
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction('keyval', 'readwrite');

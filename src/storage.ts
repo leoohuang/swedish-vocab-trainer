@@ -2,7 +2,7 @@ import { withWordGroups } from './groups';
 import { aiEvidence } from '../shared/ai';
 import { get, update } from 'idb-keyval';
 import { z } from 'zod';
-import { emptyData } from './model';
+import { emptyData, resumeIncompleteSession } from './model';
 import type { Data } from './model';
 const str = z.string().max(20000),
   id = z.string().min(1).max(100);
@@ -47,6 +47,7 @@ const schema = z.object({
         due: z.number().nullable(),
         interval: z.number().nonnegative(),
         sessions: z.number().int().nonnegative(),
+        passed: z.boolean().optional(),
       }),
     )
     .max(50000),
@@ -105,6 +106,14 @@ export function validateData(raw: unknown): Data {
       s.tasks.some((t) => !s.ids.includes(t.wordId)))
   )
     throw new Error('备份中的练习记录不完整。');
+  // Old versions counted every attempted word as learned. Only retained
+  // per-word spelling results can establish whether an old word actually passed.
+  if (s?.finished) {
+    d.words = d.words.map((w) =>
+      w.passed === undefined && s.scores[w.id] ? { ...w, passed: s.scores[w.id].wins >= 2 } : w,
+    );
+    d.session = resumeIncompleteSession(s);
+  }
   return withWordGroups(d);
 }
 const KEY = 'ord-data-v1';

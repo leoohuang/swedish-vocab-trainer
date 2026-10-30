@@ -29,7 +29,7 @@ describe('固定分组与继续学习', () => {
     const data = {
       ...emptyData(),
       decks,
-      words: words(50).map((w, i) => ({ ...w, sessions: i < 10 ? 1 : 0 })),
+      words: words(50).map((w, i) => ({ ...w, sessions: i < 10 ? 1 : 0, passed: i < 10 })),
     };
     const restored = validateData(JSON.parse(JSON.stringify(data)));
     const groups = studyGroups(restored.words, restored.decks);
@@ -39,15 +39,20 @@ describe('固定分组与继续学习', () => {
     expect(restored.words.filter((w) => w.sessions === 1)).toHaveLength(10);
   });
   it('只剩 3 个词也能成组，部分已学的组只默认练剩余新词', () => {
-    const assigned = assignWordGroups(words(23).map((w, i) => ({ ...w, sessions: i < 4 ? 1 : 0 })));
+    const assigned = assignWordGroups(
+      words(23).map((w, i) => ({ ...w, sessions: i < 4 ? 1 : 0, passed: i < 4 })),
+    );
     const groups = studyGroups(assigned, decks);
     expect(groups[2].words).toHaveLength(3);
     expect(groupWords(groups[0]).map((w) => w.id)).toEqual(['w4', 'w5', 'w6', 'w7', 'w8', 'w9']);
   });
   it('删除词条不会重排其他组，新增词不会塞回已学过的末组', () => {
-    const assigned = assignWordGroups(words(15).map((w) => ({ ...w, sessions: 1 })));
+    const assigned = assignWordGroups(words(15).map((w) => ({ ...w, sessions: 1, passed: true })));
     const kept = assigned.filter((w) => w.id !== 'w0');
-    const added = assignWordGroups([...kept, { ...words(1)[0], id: 'new', sessions: 0 }]);
+    const added = assignWordGroups([
+      ...kept,
+      { ...words(1)[0], id: 'new', sessions: 0, passed: false },
+    ]);
     expect(added.find((w) => w.id === 'w10')?.group).toBe(2);
     expect(added.find((w) => w.id === 'new')?.group).toBe(3);
     expect(studyGroups(added, decks)[0].completed).toBe(true);
@@ -63,7 +68,7 @@ describe('固定分组与继续学习', () => {
   });
   it('全部学过时不自动重复第一组，到期复习独立推荐', () => {
     const groups = studyGroups(
-      assignWordGroups(words(20).map((w) => ({ ...w, sessions: 1 }))),
+      assignWordGroups(words(20).map((w) => ({ ...w, sessions: 1, passed: true }))),
       decks,
     );
     expect(recommendedGroup(groups)).toBeUndefined();

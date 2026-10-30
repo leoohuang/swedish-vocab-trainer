@@ -58,6 +58,7 @@ import {
   createSession,
   emptyData,
   finishSession,
+  hasPassed,
   normalize,
   spellingAnswer,
   uid,
@@ -262,7 +263,7 @@ export default function App() {
         : filter === 'due'
           ? w.due !== null && w.due <= Date.now()
           : filter === 'new'
-            ? w.sessions === 0
+            ? !hasPassed(w)
             : true),
   );
   function navigate(p: Page) {
@@ -1015,6 +1016,14 @@ export default function App() {
                     </button>{' '}
                   </div>
                 </div>
+                {data.words.some(
+                  (w) =>
+                    (!deckId || w.deckId === deckId) && w.sessions > 0 && w.passed === undefined,
+                ) && (
+                  <p className="notice" aria-label="旧版过关记录待核验">
+                    部分词只有旧版练习次数，缺少逐词过关结果，暂不算已过关。重新独立拼对两次即可确认；原有词库和练习记录保留。
+                  </p>
+                )}
                 {data.decks.length > 0 && (
                   <label className="deck-switcher">
                     <span>切换词库（共 {data.decks.length} 个）</span>
@@ -1129,13 +1138,13 @@ export default function App() {
                         {(() => {
                           const groups = allGroups.filter((g) => g.deckId === currentDeck.id);
                           const next = recommendedGroup(groups);
-                          return next ? `接着学习第 ${next.number} 组` : '所有分组都已学过';
+                          return next ? `接着学习第 ${next.number} 组` : '所有分组都已过关';
                         })()}
                       </strong>
                     </div>
                     <span>
                       {allGroups.filter((g) => g.deckId === currentDeck.id && g.completed).length} /{' '}
-                      {allGroups.filter((g) => g.deckId === currentDeck.id).length} 组已学过
+                      {allGroups.filter((g) => g.deckId === currentDeck.id).length} 组已过关
                     </span>
                   </div>
                 )}
@@ -1213,12 +1222,14 @@ export default function App() {
                               )}
                             </div>
                             <div>
-                              <span className={`status-pill ${w.sessions ? 'learned' : ''}`}>
-                                {!w.sessions
-                                  ? '未学习'
+                              <span className={`status-pill ${hasPassed(w) ? 'learned' : ''}`}>
+                                {!hasPassed(w)
+                                  ? w.sessions > 0 && w.passed === undefined
+                                    ? '待核验'
+                                    : '未过关'
                                   : w.due && w.due <= Date.now()
                                     ? '待复习'
-                                    : '已练习'}
+                                    : '已过关'}
                               </span>
                             </div>
                             <div className="row-actions">
@@ -1282,8 +1293,8 @@ export default function App() {
                 </div>
                 <div className="history-summary">
                   <div>
-                    <strong>{data.history.length}</strong>
-                    <span>完成练习</span>
+                    <strong>{data.history.filter((h) => h.completed === h.words).length}</strong>
+                    <span>全部过关的练习</span>
                   </div>
                   <div>
                     <strong>{data.history.reduce((a, h) => a + h.words, 0)}</strong>
@@ -1333,7 +1344,9 @@ export default function App() {
                           </strong>
                           <span>达到本轮目标</span>
                         </div>
-                        <span className="status-pill learned">已完成</span>
+                        <span className={`status-pill ${h.completed === h.words ? 'learned' : ''}`}>
+                          {h.completed === h.words ? '全部过关' : '未全过关（旧版）'}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -2151,7 +2164,7 @@ function DeckCard({
   index: number;
   onOpen: () => void;
 }) {
-  const learned = words.filter((w) => w.sessions > 0).length;
+  const learned = words.filter(hasPassed).length;
   return (
     <button className={`deck-card tone-${index % 3}`} onClick={onOpen}>
       <div className="deck-icon">
@@ -2168,7 +2181,7 @@ function DeckCard({
       </div>
       <div className="deck-footer">
         <span>
-          已练习 {learned} / {words.length}
+          已过关 {learned} / {words.length}
         </span>
         <span className="circle-arrow">
           <ArrowUpRight size={19} />
