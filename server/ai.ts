@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { aiRequest } from '../shared/ai.ts';
-import type { AiRequest } from '../shared/ai.ts';
-import { AiError, extractVocabulary } from '../shared/extraction.ts';
+import { aiRequest, topicRequest } from '../shared/ai.ts';
+import type { AiRequest, TopicRequest } from '../shared/ai.ts';
+import { AiError, extractVocabulary, generateVocabulary } from '../shared/extraction.ts';
 import type { AiConfig } from '../shared/extraction.ts';
 export {
   AiError,
@@ -52,7 +52,7 @@ export function createAiHandler(
   const calls: number[] = [];
   return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const path = req.url?.split('?')[0];
-    if (path !== '/api/ai/status' && path !== '/api/ai/extract') {
+    if (path !== '/api/ai/status' && path !== '/api/ai/extract' && path !== '/api/ai/generate') {
       next();
       return;
     }
@@ -116,12 +116,16 @@ export function createAiHandler(
         }
         parts.push(Buffer.from(part));
       }
-      let request: AiRequest;
+      let request: AiRequest | TopicRequest;
       try {
-        request = aiRequest.parse(JSON.parse(Buffer.concat(parts).toString('utf8')));
+        const body = JSON.parse(Buffer.concat(parts).toString('utf8'));
+        request = path === '/api/ai/generate' ? topicRequest.parse(body) : aiRequest.parse(body);
       } catch {
         json(res, 400, {
-          error: '请确认发送授权、材料内容、水平及目标词数；每次最多 30000 字符。',
+          error:
+            path === '/api/ai/generate'
+              ? '请输入 1–160 字主题，选择 SFI A–D、5–30 个词，并确认发送授权。'
+              : '请确认发送授权、材料内容、水平及目标词数；每次最多 30000 字符。',
         });
         return;
       }
@@ -145,7 +149,10 @@ export function createAiHandler(
       };
       res.on('close', disconnect);
       try {
-        const result = await extractVocabulary(request, config, fetcher, controller.signal);
+        const result =
+          'topic' in request
+            ? await generateVocabulary(request, config, fetcher, controller.signal)
+            : await extractVocabulary(request, config, fetcher, controller.signal);
         if (!res.destroyed) json(res, 200, result);
       } finally {
         active--;

@@ -46,6 +46,8 @@ import {
 } from 'lucide-react';
 import { DEMO, parseText, readFile, materialBlocks, readMaterial } from './parser';
 import { AiOptions } from './AiOptions';
+import { TopicGenerator, defaultTopicOptions } from './TopicOptions';
+import type { TopicOptions } from './TopicOptions';
 import { AiEvidenceView } from './AiEvidenceView';
 import { aiStatus, defaultOptions, requestAi } from './ai-client';
 import type { AiStatus, ImportOptions } from './ai-client';
@@ -143,6 +145,8 @@ export default function App() {
     [pendingDeck, setPendingDeck] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
     [importError, setImportError] = useState('');
+  const [importKind, setImportKind] = useState<'material' | 'topic'>('material');
+  const [topicOptions, setTopicOptions] = useState(defaultTopicOptions);
   const [aiOptions, setAiOptions] = useState(defaultOptions);
   const [aiState, setAiState] = useState<AiStatus | null>(null);
   const [blocks, setBlocks] = useState<SourceBlock[] | null>(null);
@@ -266,14 +270,16 @@ export default function App() {
       window.removeEventListener('focus', refresh);
     };
   }, [importing]);
-  function openImport(example = false, d?: Deck) {
+  function openImport(example = false, d?: Deck, kind: 'material' | 'topic' = 'material') {
+    setImportKind(kind);
+    setTopicOptions(defaultTopicOptions());
     importNameEdited.current = false;
     setAiOptions({ ...defaultOptions(), engine: example ? 'local' : 'ai' });
     setBlocks(null);
     setAiSummary(example ? '本机示例预览，未调用 AI。' : '');
     refreshAiStatus();
     setPendingDeck(d?.id || null);
-    setDeckName(d?.name || '我的瑞典语笔记');
+    setDeckName(d?.name || (kind === 'topic' ? '主题词表 · SFI B' : '我的瑞典语笔记'));
     setText(example ? DEMO : '');
     setDrafts(d ? structuredClone(d.pending) : example ? parseText(DEMO, '示例笔记') : null);
     setImportError('');
@@ -310,6 +316,42 @@ export default function App() {
     } finally {
       setBusy(false);
       e.target.value = '';
+    }
+  }
+  function changeTopic(patch: Partial<TopicOptions>) {
+    const next = { ...topicOptions, ...patch };
+    setTopicOptions(next);
+    setImportError('');
+    if (!importNameEdited.current)
+      setDeckName(`${next.topic.trim() || '主题词表'} · SFI ${next.sfiLevel}`.slice(0, 100));
+  }
+  async function generateTopic() {
+    if (!topicOptions.topic.trim() || !topicOptions.consent) return;
+    const controller = new AbortController();
+    abortAi.current = controller;
+    setBusy(true);
+    setImportError('');
+    setAiSummary('');
+    try {
+      const result = await requestAi(
+        { ...topicOptions, topic: topicOptions.topic.trim(), consent: true },
+        controller.signal,
+      );
+      setDrafts(result.drafts);
+      setAiSummary(result.summary);
+      setDraftFilter('all');
+      setDraftSearch('');
+    } catch (error) {
+      setImportError(
+        controller.signal.aborted
+          ? '已取消生成，主题和课程设置仍保留。'
+          : error instanceof Error
+            ? error.message
+            : '生成失败，请重试。',
+      );
+    } finally {
+      abortAi.current = null;
+      setBusy(false);
     }
   }
   async function parse() {
@@ -765,6 +807,12 @@ export default function App() {
                               : '导入我的单词'}
                         {active ? <ArrowRight size={18} /> : <Plus size={19} />}
                       </button>
+                      <button
+                        className="button secondary"
+                        onClick={() => openImport(false, undefined, 'topic')}
+                      >
+                        按主题生成词表
+                      </button>
                       <button className="text-button" onClick={() => openImport(true)}>
                         试试示例笔记 <ArrowUpRight size={16} />
                       </button>
@@ -934,10 +982,18 @@ export default function App() {
                         : '把每一次遇到的新词，收进自己的练习本。'}
                     </p>
                   </div>
-                  <button className="button primary" onClick={() => openImport()}>
-                    <Plus size={18} />
-                    导入单词
-                  </button>
+                  <div className="button-group library-create-actions">
+                    <button
+                      className="button secondary"
+                      onClick={() => openImport(false, undefined, 'topic')}
+                    >
+                      按主题生成词表
+                    </button>
+                    <button className="button primary" onClick={() => openImport()}>
+                      <Plus size={18} />
+                      导入单词
+                    </button>{' '}
+                  </div>
                 </div>
                 {data.decks.length > 0 && (
                   <label className="deck-switcher">
@@ -1124,7 +1180,10 @@ export default function App() {
                               {w.note && <small>{w.note}</small>}
                               {w.ai && (
                                 <small className="ai-word-marker">
-                                  AI 整理 ·{' '}
+                                  {w.ai.mode === 'generated'
+                                    ? `AI 生成 · SFI ${w.ai.sfiLevel || ''}`
+                                    : 'AI 整理'}{' '}
+                                  ·{' '}
                                   {w.ai.meaningOrigin === 'source'
                                     ? '原文释义'
                                     : w.ai.meaningOrigin === 'edited'
@@ -1377,14 +1436,60 @@ export default function App() {
         </div>
       )}
       {importing && (
-        <Modal title={drafts ? '确认你的单词' : '把学习材料变成词库'} wide onClose={closeImport}>
+        <Modal
+          title={
+            drafts
+              ? '确认你的单词'
+              : importKind === 'topic'
+                ? '按主题生成词表'
+                : '把学习材料变成词库'
+          }
+          wide
+          onClose={closeImport}
+        >
           <div className="import-steps">
-            <span className={!drafts ? 'step-active' : ''}>01 上传学习材料</span>
+            <span className={!drafts ? 'step-active' : ''}>
+              01 {importKind === 'topic' ? '选择主题与课程' : '上传学习材料'}
+            </span>
             <ChevronRight size={14} />
             <span className={drafts ? 'step-active' : ''}>02 理解与确认</span>
             <ChevronRight size={14} />
             <span>03 开始练习</span>
           </div>
+          {!drafts && !pendingDeck && (
+            <div className="import-kind-switch" role="group" aria-label="创建词库方式">
+              <button
+                type="button"
+                disabled={busy}
+                aria-pressed={importKind === 'material'}
+                onClick={() => {
+                  setImportKind('material');
+                  setImportError('');
+                  if (!importNameEdited.current) setDeckName('我的瑞典语笔记');
+                }}
+              >
+                导入学习材料
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                aria-pressed={importKind === 'topic'}
+                onClick={() => {
+                  setImportKind('topic');
+                  setImportError('');
+                  if (!importNameEdited.current)
+                    setDeckName(
+                      `${topicOptions.topic.trim() || '主题词表'} · SFI ${topicOptions.sfiLevel}`.slice(
+                        0,
+                        100,
+                      ),
+                    );
+                }}
+              >
+                按主题生成
+              </button>
+            </div>
+          )}
           <div className="import-name import-name-early">
             <label className="field-label" htmlFor="deck-name">
               词库名称
@@ -1409,57 +1514,67 @@ export default function App() {
             </div>
           </div>
           {!drafts ? (
-            <>
-              <AiOptions
-                options={aiOptions}
-                onChange={(patch) => {
-                  setAiOptions((old) => ({ ...old, ...patch }));
-                  setImportError('');
-                }}
+            importKind === 'topic' ? (
+              <TopicGenerator
+                options={topicOptions}
+                onChange={changeTopic}
                 status={aiState}
                 onRefresh={refreshAiStatus}
                 disabled={busy}
               />
-              <button
-                className="upload-zone"
-                onClick={() => fileRef.current?.click()}
-                disabled={busy}
-              >
-                <span className="upload-icon">
-                  <Upload size={28} />
-                </span>
-                <strong>{busy ? '正在本机读取…' : '选择笔记、词汇合集或课文'}</strong>
-                <span>TXT、MD、CSV、Excel、Word、文字型 PDF</span>
-                <small>
+            ) : (
+              <>
+                <AiOptions
+                  options={aiOptions}
+                  onChange={(patch) => {
+                    setAiOptions((old) => ({ ...old, ...patch }));
+                    setImportError('');
+                  }}
+                  status={aiState}
+                  onRefresh={refreshAiStatus}
+                  disabled={busy}
+                />
+                <button
+                  className="upload-zone"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={busy}
+                >
+                  <span className="upload-icon">
+                    <Upload size={28} />
+                  </span>
+                  <strong>{busy ? '正在本机读取…' : '选择笔记、词汇合集或课文'}</strong>
+                  <span>TXT、MD、CSV、Excel、Word、文字型 PDF</span>
+                  <small>
+                    {aiOptions.engine === 'ai'
+                      ? '最大 10 MB · PDF 最多 80 页 · AI 每批最多 30000 字符'
+                      : '最大 10 MB · PDF 最多 80 页 · 每批最多 2000 条'}
+                  </small>
+                </button>
+                <div className="or-divider">
+                  <span>或者，直接粘贴</span>
+                </div>
+                <label className="field-label" htmlFor="notes">
+                  你的学习材料
+                </label>
+                <textarea
+                  id="notes"
+                  className="notes-input"
+                  placeholder={'en bok - 书，böcker\näta / 吃 / åt / ätit\nvacker 美丽的'}
+                  value={text}
+                  disabled={busy}
+                  onChange={(e) => {
+                    setText(e.target.value);
+                    setBlocks(null);
+                  }}
+                />
+                <div className="import-local">
+                  <ShieldCheck size={15} />
                   {aiOptions.engine === 'ai'
-                    ? '最大 10 MB · PDF 最多 80 页 · AI 每批最多 30000 字符'
-                    : '最大 10 MB · PDF 最多 80 页 · 每批最多 2000 条'}
-                </small>
-              </button>
-              <div className="or-divider">
-                <span>或者，直接粘贴</span>
-              </div>
-              <label className="field-label" htmlFor="notes">
-                你的学习材料
-              </label>
-              <textarea
-                id="notes"
-                className="notes-input"
-                placeholder={'en bok - 书，böcker\näta / 吃 / åt / ätit\nvacker 美丽的'}
-                value={text}
-                disabled={busy}
-                onChange={(e) => {
-                  setText(e.target.value);
-                  setBlocks(null);
-                }}
-              />
-              <div className="import-local">
-                <ShieldCheck size={15} />
-                {aiOptions.engine === 'ai'
-                  ? `${text.length} 字符 · ${blocks ? blocks.length + ' 个来源片段' : '粘贴材料'} · AI 输出需要你核对`
-                  : '本机规则整理，不上传文件。不确定的内容会留给你确认。'}
-              </div>
-            </>
+                    ? `${text.length} 字符 · ${blocks ? blocks.length + ' 个来源片段' : '粘贴材料'} · AI 输出需要你核对`
+                    : '本机规则整理，不上传文件。不确定的内容会留给你确认。'}
+                </div>
+              </>
+            )
           ) : (
             <>
               {aiSummary && (
@@ -1552,7 +1667,7 @@ export default function App() {
                         <details>
                           <summary>
                             {d.issue && <span className="review-label">{d.issue} · </span>}
-                            查看原文与来源
+                            {d.ai?.mode === 'generated' ? '查看生成主题与课程' : '查看原文与来源'}
                           </summary>
                           <p className="source-text">{d.source}</p>
                           <small>{d.location}</small>
@@ -1586,6 +1701,10 @@ export default function App() {
                   </strong>{' '}
                   条已勾选 · 其余保留待整理
                 </>
+              ) : importKind === 'topic' ? (
+                <span className="topic-review-note">
+                  词条、释义和例句均由 AI 生成，保存前请核对。
+                </span>
               ) : (
                 <button
                   className="text-button"
@@ -1607,7 +1726,7 @@ export default function App() {
               )}
               {drafts && !pendingDeck && (
                 <button className="button secondary" onClick={() => setDrafts(null)}>
-                  重新导入
+                  {importKind === 'topic' ? '调整主题' : '重新导入'}
                 </button>
               )}
               {drafts ? (
@@ -1618,6 +1737,20 @@ export default function App() {
                 >
                   保存词库
                   <Check size={17} />
+                </button>
+              ) : importKind === 'topic' ? (
+                <button
+                  className="button primary"
+                  disabled={
+                    busy ||
+                    !topicOptions.topic.trim() ||
+                    !topicOptions.consent ||
+                    !aiState?.configured
+                  }
+                  onClick={generateTopic}
+                >
+                  {busy ? 'AI 正在生成…' : '生成词表'}
+                  <ArrowRight size={17} />
                 </button>
               ) : (
                 <button
@@ -1724,7 +1857,9 @@ export default function App() {
             </label>
             <AiEvidenceView evidence={edit.ai} />
             <details>
-              <summary>查看原文与来源</summary>
+              <summary>
+                {edit.ai?.mode === 'generated' ? '查看生成主题与课程' : '查看原文与来源'}
+              </summary>
               <p className="source-text">{edit.source}</p>
               <small>{edit.location}</small>
             </details>

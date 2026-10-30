@@ -5,13 +5,18 @@ export function AiEvidenceView({ evidence: ai }: { evidence: AiEvidence | undefi
     <div className="ai-evidence">
       <div className="ai-evidence-tags">
         <span>
-          {ai.meaningOrigin === 'source'
-            ? '原文提供释义'
-            : ai.meaningOrigin === 'edited'
-              ? '释义已手动修改'
-              : 'AI 补充释义 · 请核对'}
+          {ai.mode === 'generated'
+            ? `AI 生成词表${ai.sfiLevel ? ` · SFI ${ai.sfiLevel}` : ''}`
+            : ai.meaningOrigin === 'source'
+              ? '原文提供释义'
+              : ai.meaningOrigin === 'edited'
+                ? '释义已手动修改'
+                : 'AI 补充释义 · 请核对'}
         </span>
-        {ai.example && <span>例句来自材料</span>}
+        {ai.mode === 'generated' && ai.meaningOrigin === 'edited' && <span>释义已手动修改</span>}
+        {ai.example && (
+          <span>{ai.mode === 'generated' ? 'AI 生成例句 · 请核对' : '例句来自材料'}</span>
+        )}
       </div>
       {ai.reason && (
         <p>

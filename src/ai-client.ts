@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Draft } from './model';
 import { aiEvidence, materialMode } from '../shared/ai';
-import type { AiRequest } from '../shared/ai';
+import type { AiRequest, TopicRequest } from '../shared/ai';
 export type AiStatus = { configured: boolean; model: string; provider: string; style: string };
 export type ImportOptions = {
   engine: 'ai' | 'local';
@@ -46,10 +46,10 @@ const resultSchema = z.object({
   summary: z.string(),
 });
 export async function requestAi(
-  request: AiRequest,
+  request: AiRequest | TopicRequest,
   signal: AbortSignal,
 ): Promise<{ drafts: Draft[]; summary: string; detectedMode: string; skippedKnown: number }> {
-  const res = await fetch('/api/ai/extract', {
+  const res = await fetch('topic' in request ? '/api/ai/generate' : '/api/ai/extract', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),

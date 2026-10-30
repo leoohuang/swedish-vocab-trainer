@@ -4013,3 +4013,138 @@ summary {
   line-height: 1.6;
   color: #72776d;
 }
+
+.import-kind-switch {
+  display: flex;
+  gap: 5px;
+  padding: 5px;
+  margin: 20px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f4f4ed;
+}
+.import-kind-switch button {
+  flex: 1;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #6a746b;
+  font: inherit;
+  cursor: pointer;
+}
+.import-kind-switch button[aria-pressed='true'] {
+  background: #fffef9;
+  color: #315940;
+  box-shadow: 0 2px 7px #253c3210;
+  font-weight: 600;
+}
+.topic-generator fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.topic-intro {
+  display: flex;
+  gap: 13px;
+  padding: 21px;
+  background: #edf1e7;
+  border-radius: 13px;
+  margin: 12px 0 24px;
+}
+.topic-intro > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #547446;
+}
+.topic-intro strong {
+  font-size: 17px;
+}
+.topic-intro p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 7px 0 0;
+  color: #687362;
+}
+.topic-field {
+  display: grid;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.topic-field input {
+  width: 100%;
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fffefa;
+  font: inherit;
+  font-weight: 400;
+}
+.topic-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 24px;
+}
+.topic-chip {
+  border: 1px solid #dce1d3;
+  border-radius: 100px;
+  background: #f7f8f1;
+  color: #5e7155;
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.topic-chip:hover {
+  background: #e9efdf;
+}
+.topic-service {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: #687362;
+  font-size: 12px;
+}
+.topic-review-note {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #687362;
+}
+.library-create-actions,
+.hero-actions {
+  flex-wrap: wrap;
+}
+@media (max-width: 520px) {
+  .library-create-actions {
+    width: 100%;
+  }
+  .topic-intro {
+    padding: 16px;
+  }
+  .import-kind-switch button {
+    padding: 10px 6px;
+    font-size: 13px;
+  }
+}
+.topic-generator {
+  padding: 0 32px 18px;
+}
+.import-kind-switch {
+  margin-left: 32px;
+  margin-right: 32px;
+}
+@media (max-width: 520px) {
+  .topic-generator {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .import-kind-switch {
+    margin-left: 18px;
+    margin-right: 18px;
+  }
+}

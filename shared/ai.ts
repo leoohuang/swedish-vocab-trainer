@@ -23,12 +23,21 @@ export const aiRequest = z
       c.addIssue({ code: 'custom', message: '来源编号重复，请重新读取材料。' });
   });
 export type AiRequest = z.infer<typeof aiRequest>;
+export const topicRequest = z.object({
+  topic: z.string().trim().min(1).max(160),
+  sfiLevel: z.enum(['A', 'B', 'C', 'D']),
+  count: z.number().int().min(5).max(30),
+  consent: z.literal(true),
+});
+export type TopicRequest = z.infer<typeof topicRequest>;
 export const aiEvidence = z.object({
   reason: z.string().max(1000),
   example: z.string().max(2000),
   exampleTranslation: z.string().max(2000),
   meaningOrigin: z.enum(['source', 'ai', 'edited']),
-  mode: z.enum(['vocabulary', 'article', 'mixed']),
+  mode: z.enum(['vocabulary', 'article', 'mixed', 'generated']),
+  topic: z.string().max(160).optional(),
+  sfiLevel: z.enum(['A', 'B', 'C', 'D']).optional(),
 });
 export type AiEvidence = z.infer<typeof aiEvidence>;
 // This deliberately uses only the JSON Schema subset supported by strict structured outputs.

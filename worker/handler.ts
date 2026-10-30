@@ -1,5 +1,5 @@
-import { aiRequest } from '../shared/ai';
-import { AiError, extractVocabulary } from '../shared/extraction';
+import { aiRequest, topicRequest } from '../shared/ai';
+import { AiError, extractVocabulary, generateVocabulary } from '../shared/extraction';
 import type { AiConfig } from '../shared/extraction';
 type Env = {
   OPENAI_API_KEY?: string;
@@ -45,7 +45,8 @@ export function createWorkerHandler(
             style: config.style,
             hosted: true,
           });
-        if (path !== '/api/ai/extract') return json({ error: '接口未找到。' }, 404);
+        if (path !== '/api/ai/extract' && path !== '/api/ai/generate')
+          return json({ error: '接口未找到。' }, 404);
         if (request.method !== 'POST') return json({ error: '请使用 POST 请求。' }, 405);
         if (!request.headers.get('content-type')?.includes('application/json'))
           return json({ error: '请求需要 JSON 内容。' }, 415);
@@ -75,7 +76,9 @@ export function createWorkerHandler(
           bytes.set(part, offset);
           offset += part.byteLength;
         }
-        const parsed = aiRequest.safeParse(JSON.parse(new TextDecoder().decode(bytes)));
+        const body = JSON.parse(new TextDecoder().decode(bytes));
+        const parsed =
+          path === '/api/ai/generate' ? topicRequest.safeParse(body) : aiRequest.safeParse(body);
         if (!parsed.success)
           return json(
             { error: '请确认发送授权、材料内容、水平和词数；单次最多 30000 字符。' },
@@ -89,7 +92,11 @@ export function createWorkerHandler(
         active++;
         calls.push(now);
         try {
-          return json(await extractVocabulary(parsed.data, config, fetcher, request.signal));
+          return json(
+            'topic' in parsed.data
+              ? await generateVocabulary(parsed.data, config, fetcher, request.signal)
+              : await extractVocabulary(parsed.data, config, fetcher, request.signal),
+          );
         } finally {
           active--;
         }
