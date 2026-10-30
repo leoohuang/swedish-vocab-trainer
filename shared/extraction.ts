@@ -182,7 +182,7 @@ export async function generateVocabulary(
   const result = await callModel(config, request, [], fetcher, signal);
   const unique = new Map<string, Draft>();
   for (const word of result.words) {
-    const term = compact(word.term),
+    const term = compact(word.term).replace(/^att\s+/i, ''),
       meaning = word.meaning.trim();
     if (!term || !meaning || /[\u3400-\u9fff]/.test(term) || /[.!?]$/.test(term)) continue;
     const key = termKey(term);

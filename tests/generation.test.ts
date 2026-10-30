@@ -45,6 +45,14 @@ function upstream(words = [word()]) {
   });
 }
 describe('按主题生成 SFI 词表', () => {
+  it('动词短语去掉不定式标记 att，并按练习词形去重', async () => {
+    const result = await generateVocabulary(
+      request,
+      config,
+      upstream([word('att boka en tid'), word('boka en tid')]),
+    );
+    expect(result.drafts.map((w) => w.term)).toEqual(['boka en tid']);
+  });
   it('校验主题、课程、数量和发送同意', () => {
     expect(topicRequest.parse({ ...request, topic: ' 看病就医 ' }).topic).toBe('看病就医');
     for (const patch of [
