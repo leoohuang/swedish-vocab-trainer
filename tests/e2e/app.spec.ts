@@ -20,7 +20,6 @@ test('导入待整理可修正，刷新与重复内容保存正确', async ({ pa
   await page.reload();
   await page.getByRole('button', { name: '我的词库' }).click();
   await expect(page.getByText('behöver kolla', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '我的瑞典语笔记' }).click();
   await page.getByRole('button', { name: '编辑 ett äpple' }).click();
   await expect(page.getByText('修改词条会保留学习进度。')).toBeVisible();
   await page.getByRole('button', { name: '关闭', exact: true }).click();

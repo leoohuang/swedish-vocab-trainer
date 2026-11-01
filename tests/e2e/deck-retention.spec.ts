@@ -46,6 +46,8 @@ test('同名导入仍新增独立词库，原词条与进度刷新后保留', as
   expect(after.decks).toHaveLength(2);
   await page.getByRole('button', { name: '我的词库' }).click();
   await expect(page.getByText('äpple', { exact: true })).toBeVisible();
+  await expect(page.getByText('banan', { exact: true })).toHaveCount(0);
+  await page.getByLabel('切换词库').selectOption('');
   await expect(page.getByText('banan', { exact: true })).toBeVisible();
 });
 test('旧标签页保存不会覆盖另一页新增的词库', async ({ page, context }) => {
@@ -81,13 +83,11 @@ test('合并备份保留两个词库和原进度，重复导入不产生重复',
   incoming.words[0].due = 12345;
   for (let i = 0; i < 2; i++) {
     await page.getByRole('button', { name: '数据与设置' }).click();
-    await page
-      .locator('input[accept=".json,application/json"]')
-      .setInputFiles({
-        name: 'backup.json',
-        mimeType: 'application/json',
-        buffer: Buffer.from(JSON.stringify(incoming)),
-      });
+    await page.locator('input[accept=".json,application/json"]').setInputFiles({
+      name: 'backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(incoming)),
+    });
     await expect(page.getByRole('status')).toContainText('备份已合并');
     await expect(page.getByLabel('切换词库')).toContainText('全部词库 · 2 个词');
     const data = await stored(page);

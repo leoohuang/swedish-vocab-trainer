@@ -68,6 +68,7 @@ test('选择主题和 SFI 后生成，编辑保存，刷新后仍能练习并保
   await page.reload();
   await page.getByRole('button', { name: '我的词库' }).click();
   await expect(page.getByLabel('切换词库')).toContainText('全部词库 · 2 个词');
+  await page.getByLabel('切换词库').selectOption('');
   await expect(page.getByText('en tid', { exact: true })).toBeVisible();
   await expect(page.getByText('en bok', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /01 第 3 单元 · 医疗/ }).click();

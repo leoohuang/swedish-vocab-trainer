@@ -130,13 +130,21 @@ function Empty({
   );
 }
 const speak = speakSwedish;
+const SELECTED_DECK_KEY = 'ord-selected-deck';
+function savedDeck(): string | null {
+  try {
+    return localStorage.getItem(SELECTED_DECK_KEY);
+  } catch {
+    return null;
+  }
+}
 export default function App() {
   const [data, setData] = useState<Data>(emptyData),
     [ready, setReady] = useState(false),
     [loadError, setLoadError] = useState(''),
     [saveError, setSaveError] = useState('');
   const [page, setPage] = useState<Page>('home'),
-    [deckId, setDeckId] = useState<string | null>(null),
+    [deckId, setDeckId] = useState<string | null>(savedDeck),
     [search, setSearch] = useState(''),
     [filter, setFilter] = useState('all');
   const [importing, setImporting] = useState(false),
@@ -246,8 +254,23 @@ export default function App() {
     if (training && s && !s.finished && s.tasks[s.position]?.type === 'spell' && !s.feedback)
       spellRef.current?.focus();
   }, [training, s?.position, s?.turn, s?.feedback]);
+  useEffect(() => {
+    if (!ready || loadFailed.current) return;
+    if (deckId && !data.decks.some((d) => d.id === deckId)) {
+      setDeckId(null);
+      return;
+    }
+    try {
+      if (deckId) localStorage.setItem(SELECTED_DECK_KEY, deckId);
+      else localStorage.removeItem(SELECTED_DECK_KEY);
+    } catch {
+      // The in-memory selection still works when browser storage is unavailable.
+    }
+  }, [ready, deckId, data.decks]);
   const currentDeck = data.decks.find((d) => d.id === deckId);
-  const due = data.words.filter((w) => w.due !== null && w.due <= Date.now());
+  const due = data.words.filter(
+    (w) => (!deckId || w.deckId === deckId) && w.due !== null && w.due <= Date.now(),
+  );
   const active = !!s && !s.finished;
   const today = new Date().toLocaleDateString();
   const todayCount = data.history
@@ -268,7 +291,6 @@ export default function App() {
   );
   function navigate(p: Page) {
     setPage(p);
-    setDeckId(null);
     setSearch('');
     setFilter('all');
   }
@@ -523,7 +545,7 @@ export default function App() {
     );
   }
   const allGroups = studyGroups(data.words, data.decks);
-  const homeNextGroup = recommendedGroup(allGroups);
+  const homeNextGroup = recommendedGroup(allGroups.filter((g) => !deckId || g.deckId === deckId));
   const pickerGroups = studyGroups(pickerWords, data.decks);
   function chooseGroup(group: StudyGroup, review = reviewPicker) {
     setChosenGroup(group.key);
@@ -915,12 +937,10 @@ export default function App() {
                     onClick={() => {
                       if (due.length) {
                         setPage('library');
-                        setDeckId(null);
                         setFilter('due');
                         openPicker(due, true);
                       } else {
                         setPage('library');
-                        setDeckId(null);
                         setFilter('all');
                       }
                     }}
