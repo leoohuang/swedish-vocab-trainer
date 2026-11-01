@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { Volume2 } from 'lucide-react';
 import { SoundCheck } from './SoundCheck';
 import type { AudioSettings } from './audio';
@@ -14,9 +15,9 @@ export function SoundSettings({
     <div className="sound-switches">
       {(
         [
-          { key: 'autoPronounce', label: '答对自动朗读', hint: '瑞典语发音' },
-          { key: 'typingSound', label: '键盘音效', hint: '轻柔的打字声' },
-          { key: 'answerSound', label: '答题音效', hint: '正确与错误提示' },
+          { key: 'autoPronounce', label: t('答对自动朗读'), hint: t('瑞典语发音') },
+          { key: 'typingSound', label: t('键盘音效'), hint: t('轻柔的打字声') },
+          { key: 'answerSound', label: t('答题音效'), hint: t('正确与错误提示') },
         ] as const
       ).map((item) => (
         <label key={item.key}>
@@ -37,9 +38,9 @@ export function SoundSettings({
   );
   return compact ? (
     <details className="sound-menu">
-      <summary aria-label="声音设置">
+      <summary aria-label={t('声音设置')}>
         <Volume2 size={17} />
-        <span>声音</span>
+        <span>{t('声音')}</span>
       </summary>
       {content}
     </details>

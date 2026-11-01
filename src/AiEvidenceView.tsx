@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { AiEvidence } from '../shared/ai';
 export function AiEvidenceView({ evidence: ai }: { evidence: AiEvidence | undefined }) {
   if (!ai) return null;
@@ -6,28 +7,35 @@ export function AiEvidenceView({ evidence: ai }: { evidence: AiEvidence | undefi
       <div className="ai-evidence-tags">
         <span>
           {ai.mode === 'generated'
-            ? `AI 生成词表${ai.sfiLevel ? ` · SFI ${ai.sfiLevel}` : ''}`
+            ? t('AI 生成词表{0}', ai.sfiLevel ? ` · SFI ${ai.sfiLevel}` : '')
             : ai.meaningOrigin === 'source'
-              ? '原文提供释义'
+              ? t('原文提供释义')
               : ai.meaningOrigin === 'edited'
-                ? '释义已手动修改'
-                : 'AI 补充释义 · 请核对'}
+                ? t('释义已手动修改')
+                : t('AI 补充释义 · 请核对')}
         </span>
-        {ai.mode === 'generated' && ai.meaningOrigin === 'edited' && <span>释义已手动修改</span>}
+        {ai.mode === 'generated' && ai.meaningOrigin === 'edited' && (
+          <span>{t('释义已手动修改')}</span>
+        )}
         {ai.example && (
-          <span>{ai.mode === 'generated' ? 'AI 生成例句 · 请核对' : '例句来自材料'}</span>
+          <span>{ai.mode === 'generated' ? t('AI 生成例句 · 请核对') : t('例句来自材料')}</span>
         )}
       </div>
       {ai.reason && (
         <p>
-          <b>推荐原因</b>
+          <b>{t('推荐原因')}</b>
           {ai.reason}
         </p>
       )}
       {ai.example && (
         <blockquote>
           <span lang="sv">{ai.example}</span>
-          {ai.exampleTranslation && <small>AI 译文：{ai.exampleTranslation}</small>}
+          {ai.exampleTranslation && (
+            <small>
+              {t('AI 译文：')}
+              {ai.exampleTranslation}
+            </small>
+          )}
         </blockquote>
       )}
     </div>

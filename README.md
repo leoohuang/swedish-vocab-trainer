@@ -1,99 +1,93 @@
-# ord. · 瑞典语单词练习
+# ord. — Your words. Your pace.
 
-把自己的瑞典语笔记整理成词库，一次练习 10 个词，从认识词义到独立拼写。
+[简体中文](README.zh-CN.md) · [Website](https://ord-swedish-practice.onrender.com/) · [Demo video](docs/media/ord-demo.mp4)
 
-独立网站：[ord. 瑞典语单词练习](https://ord-swedish-practice.onrender.com/)，使用网站自己的访问密码登录。
+A Swedish vocabulary practice app built around the notes you already have.
 
-本地版本仍可使用 http://127.0.0.1:5173/。此前的 ChatGPT Sites 地址仅为历史试部署，不作为使用入口。
+Import a messy word list, paste a reading passage, or ask AI for vocabulary on a topic. Review the results, save a separate deck, and practice in groups of up to ten words—from recognizing meanings to recalling spellings.
 
-当前版本支持上传学习材料：用 AI 完整整理词汇合集，或按水平从课文挑选重点词，再进入选择与拼写练习。AI 服务需要配置 API 密钥；本机规则整理仍可独立使用。
+**Status: early personal project, actively being tested and improved.** The hosted website is password-protected. This is not an official SFI resource or a publicly open service.
 
-AI 配置与数据发送说明见 [AI 整理接入](docs/AI整理接入.md)。
+![ord. English interface](docs/media/home-en.png)
 
-独立版本已提供 Node.js 构建与 Docker 部署配置，见 [独立网站部署](docs/独立网站部署.md)。独立服务已在 Render 上线；词库仍保存在访问它的浏览器中。
+## Why I built it
 
-## 本机运行
+Learning Swedish left me with vocabulary scattered across notes and reading material. I wanted to turn that material into practice without first reformatting every entry by hand.
 
-需要 Node.js 24 或更高版本，以及 npm。
+The result is a small, local-first learning app. Import results remain editable, AI-added content is identified, and practice progress stays in the learner's browser.
+
+## What it does
+
+- **Bring your own material:** TXT, Markdown, CSV, XLSX, DOCX, text-based PDF, or pasted text. Use local parsing for separated lists, or opt in to AI-assisted extraction for messy notes and passages.
+- **Generate by topic:** choose a topic, SFI course A–D, and 5–30 words. Review AI-generated meanings, forms, and examples before saving.
+- **Keep sources reviewable:** inspect source text, distinguish AI-added meanings and examples, edit uncertain entries, and keep unchecked entries pending.
+- **Practice adaptively:** words with no independent correct spelling return more often. One correct spelling reduces frequency. Two independent correct spellings remove the word from the round. The round finishes only when every word passes; hints do not count.
+- **Review:** a home-page review area offers due reviews and on-demand reinforcement, scoped to the selected deck. Review intervals use simple, inspectable rules.
+- **Stay organized:** named decks, stable ten-word groups, favorites, search, and a selected deck that stays selected across practice, navigation, and reloads.
+- **Hear feedback:** device-provided Swedish pronunciation, locally synthesized typing and answer sounds, and answer animations.
+- **Choose the interface:** Chinese or English, with the preference saved in the browser. Language changes preserve vocabulary, original meanings, and practice progress.
+- **Keep a backup:** JSON export/restore and non-destructive backup merge, plus vocabulary CSV export. Imports create separate decks; stale-tab writes are rejected to prevent overwrites.
+
+![Spelling practice](docs/media/practice-en.png)
+
+## Watch the demo
+
+[Watch / download the short MP4 demo](docs/media/ord-demo.mp4).
+
+The recording uses a fresh browser profile and a **synthetic three-word deck**. It shows real local parsing and practice interactions; it makes no AI requests and contains no personal study material. The source is in [the reproducible demo test](tests/e2e/record-demo.spec.ts).
+
+## Run locally
+
+Requires Node.js **24+**, npm, and Chrome for the browser tests.
 
 ```sh
-npm install
-npm run dev
+npm ci
+npm run dev -- --port 5173
 ```
 
-打开终端显示的本机地址。默认仅绑定 `127.0.0.1`；此地址用于当前电脑试用，不是公开网站。
+Open `http://127.0.0.1:5173/`. Local parsing works without an API key. To enable AI, configure the server environment as described in [AI setup (Chinese)](docs/AI整理接入.md). Keep keys on the server; never put them in frontend code.
 
 ```sh
-npm run build     # 类型检查、前端及独立 Node.js 网站构建
-npm run preview   # 预览 dist 构建结果
-npm test          # 导入、训练和备份校验测试
-npm run test:e2e  # 浏览器流程与文件导入测试，需要已安装 Chrome
+npm test             # Unit and data-integrity tests
+npm run build        # Type checking + frontend + standalone Node build
+npm run test:e2e     # Browser tests; start the dev server first
+npm start            # Standalone Node server
 ```
 
-浏览器测试默认连接 `http://127.0.0.1:5173`，运行前启动 `npm run dev -- --port 5173`。
+The independent website supports Node.js and Docker deployment. See [deployment instructions (Chinese)](docs/独立网站部署.md). Render deploys the hosted instance from this repository.
 
-## 已有功能
+## Data and privacy
 
-- 不用导入材料：输入主题，选择 SFI A / B / C / D 与 5–30 词，由 AI 生成词条、中文释义、词形与双语例句，确认后保存为独立词库。
-- 主题词表使用课程指导调整难度，不是官方指定词表；生成例句和释义明确标记，可编辑、备份并进入分组练习。
-- TXT、Markdown、CSV、XLSX、DOCX、文字型 PDF 导入与文本粘贴。
-- AI 自动判断单词合集、课文和混合笔记，按水平推荐重点词；保留原句、推荐原因及 AI 补充标记。
-- 混合分隔符、中文释义、跨行词义配对、词形分离、表格列名识别；Excel 读取全部工作表。
-- 导入前可按单元或分类自定义词库名称；已有词库可重命名，不改变分组和学习进度。
-- 每次导入新材料都会新建独立词库，同名也不会覆盖；词库页可随时切换。多标签页保存冲突时阻止覆盖，提示先备份再刷新。
-- 整理结果可编辑、勾选、查看原文；未确认内容保存在词库的待整理列表。
-- 按词条和释义共同识别重复内容，合并不同备注与来源，同形异义词保留为不同条目。
-- 词库固定按每组 10 词分组，默认选中第一个未完成组；保留自由选词和已学组重练。词义选择、拼写、提示、特殊字母按键与错词回练。
-- `å / ä / ö` 严格区分；规范 Unicode、大小写及空格。名词冠词展示在提示中，答案输入词本身。
-- 首页提供“到期复习”和“主动巩固”：按当前词库、每组最多 10 词练习。主动巩固可练未到期或只有旧版练习次数的词；两次独立拼对才过关。未完成练习优先续练，避免被新复习覆盖。
-- 所选词库在练习结束、页面切换和刷新后保留，手动选择“全部词库”或其他词库才切换；选择保存在当前浏览器，删除所选词库后回到全部。
-- 按本轮掌握程度动态出题：零次独立拼对的词更频繁，拼对一次后降低频率；独立拼对两次即过关并退出本轮。没有尝试次数上限，所有词过关后才完成；用提示不计独立答对。暂停和刷新保留计数，长时间练习只保留有限出题轨迹，累计成绩不丢失。
-- 过关状态与练习次数分别保存；只有两次独立拼对的词才标为过关。旧版不足两次却结束的当前练习会恢复继续；只有练习次数、没有逐词结果的旧词显示待核验，历史和次数保留。旧版未全部达标的历史显示“未全过关”。
-- IndexedDB 保存词库、组号、待整理内容、当前练习和学习记录；刷新后可续练。
-- 答对自动朗读瑞典语；本机 Web Audio 合成键盘声、正确音与错误音，并配合短促动画。三项声音设置可独立关闭并保存。
-- 基础复习安排：干净完成依次延长至 1、3、7、14 天等，有错误或提示则次日再练。
-- JSON 完整备份与校验恢复，CSV 词条导出，收藏、搜索、编辑与删除。
-- 本地测试页与线上网址的数据各自保存。使用「数据与设置 → 合并导入备份」迁移 JSON，可新增词库并保留学习进度；重复导入相同备份会跳过已有词库。
-- 响应式界面；练习选择可用数字 1–4，反馈后按 Enter 继续。
+Decks, pending imports, active practice, and history are stored in **IndexedDB in the current browser, for the current website origin**. Interface language and selected-deck preferences use local browser storage.
 
-## 当前限制
+- There are no user accounts or cross-device sync. Another browser, device, or URL has separate data.
+- Files are read locally. AI requests send the current material text or topic only after consent. Skipping known words in passage extraction is a separate option that sends practiced terms.
+- Use a JSON backup and **Merge a backup** to move decks between the local and hosted sites. Export CSV when you only need the vocabulary.
+- The website access password protects the hosted AI endpoint. It is not a cloud account or a vocabulary-sync service.
 
-- 当前先在本机运行，AI 接口与界面已接入，已用合成材料验证真实调用；复杂学习材料的整理质量仍需核对。学习数据仍为浏览器本机保存，没有跨设备同步。独立网站的正式部署与持久化存储尚待实施。
-- 不做 OCR；不支持旧版 `.doc`、图片或手写识别。每份文件不超过 10 MB，PDF 最多 80 页；本机规则每次最多整理 2000 条，AI 每次最多 30000 字符和 500 个词。
-- 本机规则优先识别瑞典语与中文；英文释义建议使用明确分隔符或双列表格。AI 可理解自由组织的材料，但仍需用户核对。
-- 发音使用设备已有的瑞典语语音。语音缺失会提示，不会改用其他语言；声音播放还受浏览器和系统静音设置影响。
-- 同义词、复杂多义词的选择题仍需真实样本验证；目前会排除相同释义与明显包含关系，选项不足则改为翻卡。
-- 本轮完成不等于长期掌握；复习算法目前为可解释的固定规则。
-- 当前验证使用 macOS Chrome，其他浏览器和实体手机尚未实测。
-- 界面字体请求 Google Fonts；文件在本机读取；AI 只有在用户勾选授权后才发送文字，默认不发送已有词库。设备朗读是否需要联网由系统语音实现决定。
+## Current limits
 
-## 文件结构
+- AI output needs review. SFI courses guide difficulty; generated lists are not official SFI word lists.
+- Changing interface language does not translate user content. The import workflow was developed primarily around Swedish–Chinese notes; clearly separated English meanings can also be imported.
+- No OCR, images, handwriting, or legacy `.doc` files. File limit: 10 MB; PDF limit: 80 pages. AI text limit: 30,000 characters per request.
+- Review scheduling is a fixed-rule implementation, not FSRS or a validated learning-outcome model. Passing a round does not prove long-term retention.
+- Swedish speech depends on voices installed on the device and browser audio permissions. No cloud speech fallback is used.
+- Automated UI checks use Chrome, including mobile-size viewports. Other browsers and physical phones need further testing.
+- Google Fonts is requested for the interface. Whether device-provided speech uses a network depends on the platform.
+- Older practice-only records without per-word spelling evidence are marked for verification, rather than silently treated as mastered.
 
-```text
-server/          本机 AI 接口与模型调用
-shared/          模型请求、输出与来源结构
-src/
-  App.tsx        页面、导入确认与练习界面
-  model.ts       数据结构、判题、练习队列与复习安排
-  groups.ts      固定分组、旧词库迁移与下一组推荐
-  audio.ts       瑞典语朗读与本机合成音效
-  parser.ts      笔记整理及各格式文件入口
-  storage.ts     本机存储、备份校验与导出
-  ai-client.ts   浏览器 AI 请求与结果校验
-  AiOptions.tsx  材料类型、学习水平与授权设置
-  style.css      界面与响应式样式
-tests/
-  core.test.ts   导入、练习与备份核心测试
-  e2e/           Chrome 浏览器测试
-  fixtures/      合成文件样本及生成脚本，无个人数据
-docs/
-  开发方案.md
-  试用说明.md
-  验证记录.md
-```
+## Project map
 
-## GitHub
+| Path                                      | Purpose                                                         |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| `src/App.tsx`                             | Import review, decks, practice, and settings                    |
+| `src/model.ts`                            | Answer checking, adaptive practice, and review intervals        |
+| `src/groups.ts`                           | Stable groups and group recommendations                         |
+| `src/i18n.ts`, `src/translations.en.json` | Interface language and English messages                         |
+| `src/parser.ts`                           | Local file reading and vocabulary parsing                       |
+| `src/storage.ts`, `src/backup.ts`         | Validated browser persistence, conflict checks, backup merge    |
+| `src/audio.ts`                            | Swedish speech and synthesized effects                          |
+| `server/`, `shared/`                      | Server-side AI requests, validation, and website access control |
+| `tests/`                                  | Unit tests, browser flows, and synthetic file fixtures          |
 
-项目仓库：[leoohuang/swedish-vocab-trainer](https://github.com/leoohuang/swedish-vocab-trainer)。仓库为私有，项目目录作为独立 Git 仓库同步。
-
-`.gitignore` 已排除依赖、构建结果、密钥、个人上传文件、本地数据和测试运行结果。示例与文件测试仅使用合成内容。
+Source availability is currently **private**. Sharing the project story or a demo does not grant repository access. No open-source license has been selected.

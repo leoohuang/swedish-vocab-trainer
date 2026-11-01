@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { Check, ArrowRight, Layers } from 'lucide-react';
 import type { StudyGroup } from './groups';
 export function GroupChoices({
@@ -23,19 +24,19 @@ export function GroupChoices({
         <div>
           <strong>
             {chosen
-              ? `已为你选好第 ${String(chosen.number).padStart(2, '0')} 组`
-              : '这些词都已经过关了'}
+              ? t('已为你选好第 {0} 组', String(chosen.number).padStart(2, '0'))
+              : t('这些词都已经过关了')}
           </strong>
           <p>
             {chosen
               ? allReview
-                ? '这一组都是练过的词，准备好就开始巩固。'
+                ? t('这一组都是练过的词，准备好就开始巩固。')
                 : review
-                  ? '这一组有到期单词，准备好就开始复习。'
+                  ? t('这一组有到期单词，准备好就开始复习。')
                   : chosen.completed
-                    ? '这组已过关，本次将重新练习。'
-                    : '每组 10 个，学完自动接着下一组。'
-              : '可以选择一组重新练习，或等到复习时间再来。'}
+                    ? t('这组已过关，本次将重新练习。')
+                    : t('每组 10 个，学完自动接着下一组。')
+              : t('可以选择一组重新练习，或等到复习时间再来。')}
           </p>
         </div>
       </div>
@@ -46,7 +47,16 @@ export function GroupChoices({
             type="button"
             className={`study-group ${g.key === selectedKey ? 'chosen' : ''} ${g.completed ? 'completed' : ''}`}
             aria-pressed={g.key === selectedKey}
-            aria-label={`第 ${g.number} 组 · ${g.deckName} · ${g.completed ? '已过关' : g.remaining.length === g.words.length ? '未学习' : '进行中'}`}
+            aria-label={t(
+              '第 {0} 组 · {1} · {2}',
+              g.number,
+              g.deckName,
+              g.completed
+                ? t('已过关')
+                : g.remaining.length === g.words.length
+                  ? t('未学习')
+                  : t('进行中'),
+            )}
             onClick={() => onChoose(g)}
           >
             <div className="study-group-top">
@@ -60,7 +70,13 @@ export function GroupChoices({
               )}
             </div>
             <h3>
-              第 {g.number} 组 <small>{g.words.length} 个词</small>
+              {t('第 ')}
+              {g.number}
+              {t(' 组 ')}
+              <small>
+                {g.words.length}
+                {t(' 个词')}
+              </small>
             </h3>
             <p>{g.deckName}</p>
             <div className="study-group-terms" lang="sv">
@@ -73,19 +89,24 @@ export function GroupChoices({
             <div className="study-group-bottom">
               <span>
                 {g.completed
-                  ? '已过关 · 可重练'
+                  ? t('已过关 · 可重练')
                   : g.remaining.length === g.words.length
-                    ? '等待开始'
-                    : `已过关 ${g.words.length - g.remaining.length} / ${g.words.length}`}
+                    ? t('等待开始')
+                    : t('已过关 {0} / {1}', g.words.length - g.remaining.length, g.words.length)}
               </span>
-              {g.dueCount > 0 && <span>{g.dueCount} 词待复习</span>}
+              {g.dueCount > 0 && (
+                <span>
+                  {g.dueCount}
+                  {t(' 词待复习')}
+                </span>
+              )}
             </div>
           </button>
         ))}
       </div>
       {chosen && (
         <div className="group-preview">
-          <span>本次练习</span>
+          <span>{t('本次练习')}</span>
           <div lang="sv">
             {(allReview
               ? chosen.words
