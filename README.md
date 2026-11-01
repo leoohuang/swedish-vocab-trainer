@@ -90,4 +90,4 @@ Decks, pending imports, active practice, and history are stored in **IndexedDB i
 | `server/`, `shared/`                      | Server-side AI requests, validation, and website access control |
 | `tests/`                                  | Unit tests, browser flows, and synthetic file fixtures          |
 
-Source availability is currently **private**. Sharing the project story or a demo does not grant repository access. No open-source license has been selected.
+Source is available at [leoohuang/swedish-vocab-trainer](https://github.com/leoohuang/swedish-vocab-trainer). No reuse license has been selected.

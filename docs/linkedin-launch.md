@@ -14,6 +14,8 @@ It’s still an early personal project. Progress is saved in the current browser
 
 I’d love feedback from Swedish learners and people building language-learning tools: how do you turn your own notes into practice?
 
+Code and project notes: https://github.com/leoohuang/swedish-vocab-trainer
+
 #Swedish #LanguageLearning #PersonalProject #AI
 
 ## What to attach
@@ -30,13 +32,13 @@ The site currently needs an access password. If you include the website link, ad
 
 Repository: https://github.com/leoohuang/swedish-vocab-trainer
 
-The repository is currently **private**, so a public LinkedIn audience cannot inspect it. The post above works without a repository link. Add the GitHub link only after you explicitly decide to make the source public; choose a license if you want to grant reuse rights. No repository visibility or access changes were made for this package.
+The repository is currently **public**, verified through GitHub. The post includes the source link. No reuse license has been selected; decide on one if you want to grant reuse rights. This preparation did not change repository visibility or access.
 
 ## 中文说明
 
 这份帖子的定位是“从真实学习需求出发、用 AI 辅助开发并持续迭代的个人项目”。没有声称已经验证学习效果，也没有把当前版本写成成熟产品。
 
-主帖不放访问不了的私有 GitHub 链接，视频本身可以展示工作成果。网站仍有访问密码；如果希望邀请试用，可以使用上面的补充说明。发布前核对一次文字和视频即可。
+仓库当前公开，主帖已附 GitHub 源码链接。视频展示实际本机整理和练习流程。网站仍有访问密码；如果希望邀请试用，可以使用上面的补充说明。发布前核对一次文字和视频即可。
 
 ## Suggested alt text for the still image
 

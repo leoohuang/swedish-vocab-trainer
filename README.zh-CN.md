@@ -98,6 +98,6 @@ docs/
 
 ## GitHub
 
-项目仓库：[leoohuang/swedish-vocab-trainer](https://github.com/leoohuang/swedish-vocab-trainer)。仓库为私有，项目目录作为独立 Git 仓库同步。
+项目仓库：[leoohuang/swedish-vocab-trainer](https://github.com/leoohuang/swedish-vocab-trainer)。仓库目前公开，项目目录作为独立 Git 仓库同步；尚未选择代码复用许可证。
 
 `.gitignore` 已排除依赖、构建结果、密钥、个人上传文件、本地数据和测试运行结果。示例与文件测试仅使用合成内容。
