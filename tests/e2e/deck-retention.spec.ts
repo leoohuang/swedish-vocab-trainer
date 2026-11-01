@@ -56,7 +56,10 @@ test('旧标签页保存不会覆盖另一页新增的词库', async ({ page, co
   await expect.poll(async () => (await stored(page))?.decks.length).toBe(1);
   const stale = await context.newPage();
   await stale.goto('/');
-  await stale.getByRole('button', { name: '我的词库' }).click();
+  await stale
+    .getByRole('navigation', { name: '主导航' })
+    .getByRole('button', { name: '我的词库' })
+    .click();
   await addDeck(page, 'banan');
   await expect.poll(async () => (await stored(page)).decks.length).toBe(2);
   await addDeck(stale, 'citron');
@@ -65,7 +68,10 @@ test('旧标签页保存不会覆盖另一页新增的词库', async ({ page, co
   expect(saved.decks).toHaveLength(2);
   expect(saved.words.map((w: { term: string }) => w.term)).toEqual(['äpple', 'banan']);
   await stale.reload();
-  await stale.getByRole('button', { name: '我的词库' }).click();
+  await stale
+    .getByRole('navigation', { name: '主导航' })
+    .getByRole('button', { name: '我的词库' })
+    .click();
   await expect(stale.getByText('banan', { exact: true })).toBeVisible();
 });
 

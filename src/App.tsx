@@ -11,6 +11,7 @@ import {
 } from './audio';
 import type { AudioSettings } from './audio';
 import { SoundSettings } from './SoundSettings';
+import { HomeReview } from './HomeReview';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
@@ -171,6 +172,7 @@ export default function App() {
     [chosenGroup, setChosenGroup] = useState<string | null>(null),
     [manualPick, setManualPick] = useState(false),
     [reviewPicker, setReviewPicker] = useState(false),
+    [reviewAll, setReviewAll] = useState(false),
     [training, setTraining] = useState(false),
     [intro, setIntro] = useState(false);
   const [draftFilter, setDraftFilter] = useState('all'),
@@ -270,6 +272,9 @@ export default function App() {
   const currentDeck = data.decks.find((d) => d.id === deckId);
   const due = data.words.filter(
     (w) => (!deckId || w.deckId === deckId) && w.due !== null && w.due <= Date.now(),
+  );
+  const learnedForReview = data.words.filter(
+    (w) => (!deckId || w.deckId === deckId) && (hasPassed(w) || w.sessions > 0),
   );
   const active = !!s && !s.finished;
   const today = new Date().toLocaleDateString();
@@ -549,9 +554,9 @@ export default function App() {
   const pickerGroups = studyGroups(pickerWords, data.decks);
   function chooseGroup(group: StudyGroup, review = reviewPicker) {
     setChosenGroup(group.key);
-    setSelected(groupWords(group, review).map((w) => w.id));
+    setSelected((reviewAll ? group.words : groupWords(group, review)).map((w) => w.id));
   }
-  function openPicker(words: Word[], review = filter === 'due') {
+  function openPicker(words: Word[], review = filter === 'due', allReview = false) {
     if (active) {
       unlockAudio();
       setTraining(true);
@@ -564,12 +569,15 @@ export default function App() {
     }
     const pool = assignWordGroups(words);
     const groups = studyGroups(pool, data.decks);
-    const group = recommendedGroup(groups, review);
+    const group = allReview ? groups[0] : recommendedGroup(groups, review);
     setPickerWords(pool);
     setReviewPicker(review);
+    setReviewAll(allReview);
     setManualPick(false);
     setChosenGroup(group?.key || null);
-    setSelected(group ? groupWords(group, review).map((w) => w.id) : []);
+    setSelected(
+      group ? (allReview ? group.words : groupWords(group, review)).map((w) => w.id) : [],
+    );
     setPicking(true);
   }
   function begin() {
@@ -934,21 +942,27 @@ export default function App() {
                     </div>
                   </div>
                   <button
-                    onClick={() => {
-                      if (due.length) {
-                        setPage('library');
-                        setFilter('due');
-                        openPicker(due, true);
-                      } else {
-                        setPage('library');
-                        setFilter('all');
-                      }
-                    }}
+                    onClick={() =>
+                      document
+                        .getElementById('home-review-title')
+                        ?.scrollIntoView({ block: 'center' })
+                    }
                   >
-                    {due.length ? '复习到期单词' : '按分组开始练习'}
-                    <ArrowRight size={18} />
+                    前往复习 <ArrowRight size={18} />
                   </button>
                 </section>
+                <HomeReview
+                  deckName={currentDeck?.name || '全部词库'}
+                  due={due.length}
+                  learned={learnedForReview.length}
+                  active={active}
+                  onDue={() => openPicker(due, true)}
+                  onLearned={() => openPicker(learnedForReview, false, true)}
+                  onResume={() => {
+                    setTraining(true);
+                    setIntro(false);
+                  }}
+                />
                 <section className="deck-section">
                   <div className="section-title">
                     <div>
@@ -1976,15 +1990,30 @@ export default function App() {
         </Modal>
       )}
       {picking && (
-        <Modal title="接着学，每组 10 个" onClose={() => setPicking(false)}>
+        <Modal
+          title={
+            reviewAll
+              ? '巩固练过的词，每组最多 10 个'
+              : reviewPicker
+                ? '到期复习，每组最多 10 个'
+                : '接着学，每组 10 个'
+          }
+          onClose={() => setPicking(false)}
+        >
           <div className="group-picker-tabs">
             <button
               className={!manualPick ? 'selected' : ''}
               onClick={() => {
                 setManualPick(false);
-                const group = recommendedGroup(pickerGroups, reviewPicker);
+                const group = reviewAll
+                  ? pickerGroups[0]
+                  : recommendedGroup(pickerGroups, reviewPicker);
                 setChosenGroup(group?.key || null);
-                setSelected(group ? groupWords(group, reviewPicker).map((w) => w.id) : []);
+                setSelected(
+                  group
+                    ? (reviewAll ? group.words : groupWords(group, reviewPicker)).map((w) => w.id)
+                    : [],
+                );
               }}
             >
               按组练习
@@ -1999,6 +2028,7 @@ export default function App() {
               selectedKey={chosenGroup}
               onChoose={chooseGroup}
               review={reviewPicker}
+              allReview={reviewAll}
             />
           ) : (
             <>

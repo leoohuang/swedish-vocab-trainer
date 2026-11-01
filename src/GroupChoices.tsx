@@ -5,11 +5,13 @@ export function GroupChoices({
   selectedKey,
   onChoose,
   review = false,
+  allReview = false,
 }: {
   groups: StudyGroup[];
   selectedKey: string | null;
   onChoose: (group: StudyGroup) => void;
   review?: boolean;
+  allReview?: boolean;
 }) {
   const chosen = groups.find((g) => g.key === selectedKey);
   return (
@@ -26,11 +28,13 @@ export function GroupChoices({
           </strong>
           <p>
             {chosen
-              ? review
-                ? '这一组有到期单词，准备好就开始复习。'
-                : chosen.completed
-                  ? '这组已过关，本次将重新练习。'
-                  : '每组 10 个，学完自动接着下一组。'
+              ? allReview
+                ? '这一组都是练过的词，准备好就开始巩固。'
+                : review
+                  ? '这一组有到期单词，准备好就开始复习。'
+                  : chosen.completed
+                    ? '这组已过关，本次将重新练习。'
+                    : '每组 10 个，学完自动接着下一组。'
               : '可以选择一组重新练习，或等到复习时间再来。'}
           </p>
         </div>
@@ -83,11 +87,13 @@ export function GroupChoices({
         <div className="group-preview">
           <span>本次练习</span>
           <div lang="sv">
-            {(review
-              ? chosen.words.filter((w) => w.due !== null && w.due <= Date.now())
-              : chosen.completed
-                ? chosen.words
-                : chosen.remaining
+            {(allReview
+              ? chosen.words
+              : review
+                ? chosen.words.filter((w) => w.due !== null && w.due <= Date.now())
+                : chosen.completed
+                  ? chosen.words
+                  : chosen.remaining
             ).map((w) => (
               <span key={w.id}>{w.term}</span>
             ))}
