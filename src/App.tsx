@@ -49,6 +49,8 @@ import {
 } from 'lucide-react';
 import { DEMO, parseText, readFile, materialBlocks, readMaterial } from './parser';
 import { AiOptions } from './AiOptions';
+import { AiConnectionSettings } from './AiConnectionSettings';
+import { useAiConnection } from './ai-connection';
 import { TopicGenerator, defaultTopicOptions } from './TopicOptions';
 import type { TopicOptions } from './TopicOptions';
 import { AiEvidenceView } from './AiEvidenceView';
@@ -143,6 +145,7 @@ function savedDeck(): string | null {
 }
 export default function App() {
   const language = useLanguage();
+  const personalConnection = useAiConnection();
   const [data, setData] = useState<Data>(emptyData),
     [ready, setReady] = useState(false),
     [loadError, setLoadError] = useState(''),
@@ -302,6 +305,9 @@ export default function App() {
     setSearch('');
     setFilter('all');
   }
+  useEffect(() => {
+    refreshAiStatus();
+  }, [personalConnection]);
   function refreshAiStatus() {
     aiStatus()
       .then(setAiState)
@@ -1470,6 +1476,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="settings-grid">
+                  <AiConnectionSettings />
                   <article className="setting-card">
                     <ShieldCheck size={28} />
                     <h2>{t('本机保存')}</h2>
@@ -1651,6 +1658,7 @@ export default function App() {
               </small>
             </div>
           </div>
+          {!drafts && <AiConnectionSettings compact />}
           {!drafts ? (
             importKind === 'topic' ? (
               <TopicGenerator

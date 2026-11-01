@@ -6,7 +6,7 @@ While learning Swedish, I kept collecting vocabulary in scattered notes—so I b
 
 It’s called **ord.**, Swedish for “word”. You can import a word list or a reading passage, review what AI extracts, and practice in small groups. You can also generate a vocabulary list from a topic and an SFI course level.
 
-Using it myself has shaped the details. New imports now create separate decks. A word stays in the round until I spell it correctly twice without hints. Words I struggle with return more often, and the deck I choose stays selected. There’s also a review area and a Chinese/English interface switch.
+Using it myself has shaped the details. New imports now create separate decks. A word stays in the round until I spell it correctly twice without hints. Words I struggle with return more often, and the deck I choose stays selected. There’s also a review area and a Chinese/English interface switch. The website is open to visitors, with a bring-your-own-key option for OpenAI and compatible APIs.
 
 I built this with AI-assisted development, then tested and revised the flows against problems I encountered as a learner. It has been a useful exercise in turning a personal frustration into a working product—and in finding the gaps between a feature that runs and one that feels right to use.
 
@@ -28,7 +28,7 @@ Code and project notes: https://github.com/leoohuang/swedish-vocab-trainer
 
 Website: https://ord-swedish-practice.onrender.com/
 
-The site currently needs an access password. If you include the website link, add: “The hosted demo is password-protected; message me if you would like to try it.” Do not include your password or API key in a post.
+The site is publicly accessible. Local parsing and practice need no API key; AI generation and extraction require the visitor’s own OpenAI or compatible API key. The key passes through the app backend to the selected provider and clears on reload. Do not include an API key in the post.
 
 Repository: https://github.com/leoohuang/swedish-vocab-trainer
 
@@ -38,7 +38,7 @@ The repository is currently **public**, verified through GitHub. The post includ
 
 这份帖子的定位是“从真实学习需求出发、用 AI 辅助开发并持续迭代的个人项目”。没有声称已经验证学习效果，也没有把当前版本写成成熟产品。
 
-仓库当前公开，主帖已附 GitHub 源码链接。视频展示实际本机整理和练习流程。网站仍有访问密码；如果希望邀请试用，可以使用上面的补充说明。发布前核对一次文字和视频即可。
+仓库当前公开，主帖已附 GitHub 源码链接。视频展示实际本机整理和练习流程。网站现已公开，可直接分享网址；AI 功能由试用者使用自己的 API 密钥，本机规则整理和练习不需要密钥。发布前核对一次文字和视频即可。
 
 ## Suggested alt text for the still image
 

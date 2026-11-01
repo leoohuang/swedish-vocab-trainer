@@ -6,7 +6,7 @@ A Swedish vocabulary practice app built around the notes you already have.
 
 Import a messy word list, paste a reading passage, or ask AI for vocabulary on a topic. Review the results, save a separate deck, and practice in groups of up to ten words—from recognizing meanings to recalling spellings.
 
-**Status: early personal project, actively being tested and improved.** The hosted website is password-protected. This is not an official SFI resource or a publicly open service.
+**Status: early personal project, actively being tested and improved.** The hosted website is open to visitors. AI features require each visitor’s own API key; local parsing and practice work without one. This is not an official SFI resource.
 
 ![ord. English interface](docs/media/home-en.png)
 
@@ -45,7 +45,7 @@ npm ci
 npm run dev -- --port 5173
 ```
 
-Open `http://127.0.0.1:5173/`. Local parsing works without an API key. To enable AI, configure the server environment as described in [AI setup (Chinese)](docs/AI整理接入.md). Keep keys on the server; never put them in frontend code.
+Open `http://127.0.0.1:5173/`. Local parsing works without an API key. To enable AI, open **Data & settings → Personal AI settings**, or expand **Use your own API / AI settings** in the import window. The local development server can also use an operator-provided environment key; the public standalone server never falls back to that key. See [BYOK and public deployment](docs/public-byok.md).
 
 ```sh
 npm test             # Unit and data-integrity tests
@@ -63,10 +63,14 @@ Decks, pending imports, active practice, and history are stored in **IndexedDB i
 - There are no user accounts or cross-device sync. Another browser, device, or URL has separate data.
 - Files are read locally. AI requests send the current material text or topic only after consent. Skipping known words in passage extraction is a separate option that sends practiced terms.
 - Use a JSON backup and **Merge a backup** to move decks between the local and hosted sites. Export CSV when you only need the vocabulary.
-- The website access password protects the hosted AI endpoint. It is not a cloud account or a vocabulary-sync service.
+- The public site requires a personal API key for every AI request. Keys remain in page memory, clear on reload, and are excluded from browser storage and backups. Only the non-secret endpoint/model preferences are stored.
+- A request sends your key and current material through this website’s backend to the provider you choose. The application does not persist or log keys. Only use an endpoint you trust.
+- Custom endpoints require a public HTTPS domain on port 443. Local/private IP targets and redirects are blocked; the connection uses a validated DNS address and the original TLS hostname.
+- An optional private deployment mode retains password login and server-owned credentials.
 
 ## Current limits
 
+- Custom OpenAI-compatible models must support JSON Schema structured output. Both Responses API and Chat Completions request styles are available.
 - AI output needs review. SFI courses guide difficulty; generated lists are not official SFI word lists.
 - Changing interface language does not translate user content. The import workflow was developed primarily around Swedish–Chinese notes; clearly separated English meanings can also be imported.
 - No OCR, images, handwriting, or legacy `.doc` files. File limit: 10 MB; PDF limit: 80 pages. AI text limit: 30,000 characters per request.

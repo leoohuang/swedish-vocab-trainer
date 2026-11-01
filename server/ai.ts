@@ -1,4 +1,7 @@
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { connectionSchema } from '../shared/connection.ts';
+import { safeUserFetch, userBaseURL } from './safe-upstream.ts';
 import { parseEnv } from 'node:util';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { aiRequest, topicRequest } from '../shared/ai.ts';
@@ -46,10 +49,12 @@ export function createAiHandler(
   getConfig = loadAiConfig,
   fetcher: typeof fetch = fetch,
   publicOrigin = publicSiteOrigin(),
+  options: { byokOnly?: boolean } = {},
 ) {
   const allowedOrigin = publicOrigin ? new URL(publicOrigin).origin : '';
+  const byokOnly = options.byokOnly ?? !!publicOrigin;
   let active = 0;
-  const calls: number[] = [];
+  const calls = new Map<string, number[]>();
   return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const path = req.url?.split('?')[0];
     if (path !== '/api/ai/status' && path !== '/api/ai/extract' && path !== '/api/ai/generate') {
@@ -88,10 +93,19 @@ export function createAiHandler(
       return;
     }
     try {
-      const config = getConfig();
       if (path === '/api/ai/status' && req.method === 'GET') {
+        const config = byokOnly
+          ? {
+              key: '',
+              model: 'gpt-4.1-mini',
+              baseURL: 'https://api.openai.com/v1',
+              style: 'responses',
+            }
+          : getConfig();
         json(res, 200, {
           configured: !!config.key,
+          byokOnly,
+          supportsUserKey: true,
           model: config.model,
           provider: new URL(config.baseURL).hostname,
           style: config.style,
@@ -129,20 +143,43 @@ export function createAiHandler(
         });
         return;
       }
+      const suppliedKey = req.headers['x-ord-ai-key'];
+      let config: AiConfig;
+      const personal = suppliedKey !== undefined;
+      if (personal) {
+        const parsed = connectionSchema.safeParse({
+          key: suppliedKey,
+          model: req.headers['x-ord-ai-model'],
+          baseURL: req.headers['x-ord-ai-url'],
+          style: req.headers['x-ord-ai-style'],
+        });
+        if (!parsed.success)
+          throw new AiError(400, 'API 设置不完整，请检查密钥、模型名称、Base URL 和接口格式。');
+        const url = userBaseURL(parsed.data.baseURL);
+        config = { ...parsed.data, baseURL: url.href.replace(/\/$/, '') };
+      } else {
+        if (byokOnly)
+          throw new AiError(401, '公开网站需要使用你自己的 API 密钥，请先打开 AI 设置。');
+        config = getConfig();
+      }
       if (active >= 2) {
         json(res, 429, { error: '已有整理任务进行中，请稍后重试。' });
         return;
       }
       const now = Date.now();
-      while (calls.length && calls[0] < now - 60000) calls.shift();
-      if (calls.length >= 10) {
+      for (const [id, times] of calls)
+        if (!times.length || times[times.length - 1] < now - 60000) calls.delete(id);
+      const caller = createHash('sha256').update(config.key).digest('hex');
+      const recent = (calls.get(caller) || []).filter((time) => time >= now - 60000);
+      if (recent.length >= 10 || (!calls.has(caller) && calls.size >= 1000)) {
         json(res, 429, { error: '整理请求过于频繁，请一分钟后再试。' });
         return;
       }
       if (!config.key)
         throw new AiError(503, '尚未配置 AI 密钥，请在项目 .env.local 设置 OPENAI_API_KEY。');
       active++;
-      calls.push(now);
+      recent.push(now);
+      calls.set(caller, recent);
       const controller = new AbortController();
       const disconnect = () => {
         if (!res.writableEnded) controller.abort();
@@ -151,8 +188,18 @@ export function createAiHandler(
       try {
         const result =
           'topic' in request
-            ? await generateVocabulary(request, config, fetcher, controller.signal)
-            : await extractVocabulary(request, config, fetcher, controller.signal);
+            ? await generateVocabulary(
+                request,
+                config,
+                personal && fetcher === fetch ? safeUserFetch : fetcher,
+                controller.signal,
+              )
+            : await extractVocabulary(
+                request,
+                config,
+                personal && fetcher === fetch ? safeUserFetch : fetcher,
+                controller.signal,
+              );
         if (!res.destroyed) json(res, 200, result);
       } finally {
         active--;

@@ -17,8 +17,11 @@ const child = spawn(process.execPath, ['standalone/server.mjs'], {
     PUBLIC_ORIGIN: process.argv.includes('--render') ? '' : base,
     RENDER_EXTERNAL_URL: process.argv.includes('--render') ? base : '',
     ASSET_DIR: resolve('standalone/client'),
+    SITE_ACCESS_MODE: process.argv.includes('--private') ? 'private' : 'public-byok',
     SITE_PASSWORD: 'synthetic-test-password',
-    OPENAI_API_KEY: '',
+    OPENAI_API_KEY: process.argv.includes('--private')
+      ? ''
+      : 'synthetic-owner-key-not-for-public-use',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -66,30 +69,52 @@ try {
       req.end(body);
     });
   assert.equal((await get('/healthz')).status, 200);
-  assert.match(await (await get('/')).text(), /网站访问密码/);
-  assert.equal((await get('/api/ai/status')).status, 401);
-  const formHeaders = { origin: base, 'content-type': 'application/x-www-form-urlencoded' };
-  assert.equal(
-    (
-      await get(
-        '/login',
-        { ...formHeaders, origin: 'https://other.example.com' },
-        'username=ord&password=synthetic-test-password',
-      )
-    ).status,
-    403,
-  );
-  assert.equal((await get('/login', formHeaders, 'username=ord&password=wrong')).status, 401);
-  const login = await get('/login', formHeaders, 'username=ord&password=synthetic-test-password');
-  assert.equal(login.status, 303);
-  const cookie = login.headers['set-cookie'][0];
-  assert.match(cookie, /HttpOnly/);
-  assert.match(cookie, /SameSite=Lax/);
-  const session = cookie.split(';')[0];
-  assert.match(await (await get('/', { cookie: session })).text(), /<div id="root">/);
-  assert.equal((await get('/api/ai/status', { cookie: session })).status, 200);
-  assert.equal((await get('/api/ai/status', { cookie: session + 'tampered' })).status, 401);
-  const headers = { cookie: session };
+  if (process.argv.includes('--private')) {
+    assert.match(await (await get('/')).text(), /网站访问密码/);
+    assert.equal((await get('/api/ai/status')).status, 401);
+    const formHeaders = { origin: base, 'content-type': 'application/x-www-form-urlencoded' };
+    assert.equal(
+      (
+        await get(
+          '/login',
+          { ...formHeaders, origin: 'https://other.example.com' },
+          'username=ord&password=synthetic-test-password',
+        )
+      ).status,
+      403,
+    );
+    assert.equal((await get('/login', formHeaders, 'username=ord&password=wrong')).status, 401);
+    const login = await get('/login', formHeaders, 'username=ord&password=synthetic-test-password');
+    assert.equal(login.status, 303);
+    const cookie = login.headers['set-cookie'][0];
+    assert.match(cookie, /HttpOnly/);
+    assert.match(cookie, /SameSite=Lax/);
+    const session = cookie.split(';')[0];
+    assert.match(await (await get('/', { cookie: session })).text(), /<div id="root">/);
+    assert.equal((await get('/api/ai/status', { cookie: session })).status, 200);
+    assert.equal((await get('/api/ai/status', { cookie: session + 'tampered' })).status, 401);
+  } else {
+    assert.match(await (await get('/')).text(), /<div id="root">/);
+    const status = await (await get('/api/ai/status')).json();
+    assert.equal(status.byokOnly, true);
+    assert.equal(status.configured, false);
+    const generation = { topic: 'synthetic', sfiLevel: 'B', count: 5, consent: true };
+    const response = await get(
+      '/api/ai/generate',
+      { origin: base, 'content-type': 'application/json' },
+      JSON.stringify(generation),
+    );
+    assert.equal(response.status, 401);
+  }
+  const headers = {};
+  if (process.argv.includes('--private')) {
+    const login = await get(
+      '/login',
+      { origin: base, 'content-type': 'application/x-www-form-urlencoded' },
+      'username=ord&password=synthetic-test-password',
+    );
+    headers.cookie = login.headers['set-cookie'][0].split(';')[0];
+  }
   const page = await get('/', headers);
   assert.equal(page.status, 200);
   assert.match(await page.text(), /<div id="root">/);
@@ -105,7 +130,7 @@ try {
   );
 
   console.log(
-    'Standalone checks passed: website, health, password, AI status, allowed host, private file isolation.',
+    'Standalone checks passed: website, health, public BYOK/private access, AI status, host checks, and private file isolation.',
   );
 } finally {
   child.kill('SIGTERM');

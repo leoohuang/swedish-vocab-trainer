@@ -70,7 +70,7 @@ async function withServer(
   publicOrigin = '',
 ) {
   const fetcher = upstream(result());
-  const handler = createAiHandler(() => cfg, fetcher, publicOrigin);
+  const handler = createAiHandler(() => cfg, fetcher, publicOrigin, { byokOnly: false });
   const server = createServer((req, res) => {
     void handler(req, res, () => {
       res.writeHead(404).end();

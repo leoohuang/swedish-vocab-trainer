@@ -97,7 +97,7 @@ test('默认无密钥时明确显示未配置，不发送材料', async ({ page 
   await page.getByLabel('你的学习材料').fill(lesson);
   await page.getByRole('checkbox', { name: /同意将本次材料文字/ }).check();
   await expect(page.getByRole('button', { name: '用 AI 整理', exact: true })).toBeDisabled();
-  await expect(page.getByText(/尚未配置 AI 密钥/)).toBeVisible();
+  await expect(page.getByText(/尚未填写 API 密钥/)).toBeVisible();
   expect(calls).toBe(0);
 });
 test('上传课文保留全文，合集模式不显示词数限制', async ({ page }) => {
@@ -132,7 +132,7 @@ test('填写密钥后回到窗口会刷新配置状态，无须重开材料', as
   );
   await page.goto('/');
   await page.getByRole('button', { name: '导入我的单词' }).click();
-  await expect(page.getByText(/尚未配置 AI 密钥/)).toBeVisible();
+  await expect(page.getByText(/尚未填写 API 密钥/)).toBeVisible();
   await page.getByLabel('你的学习材料').fill(lesson);
   await page.getByRole('checkbox', { name: /同意将本次材料文字/ }).check();
   await expect(page.getByRole('button', { name: '用 AI 整理', exact: true })).toBeDisabled();

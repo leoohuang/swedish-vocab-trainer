@@ -1,5 +1,7 @@
 # Render 首次部署
 
+> 当前公开网站默认使用访客自带 API（public-byok），无需网站密码，也不回退到站长密钥。见 [公开网站与自带 API](public-byok.md)。以下服务端密钥/密码说明用于本机或显式设置 `SITE_ACCESS_MODE=private` 的私有部署。
+
 项目使用仓库根目录的 `render.yaml`：Docker、免费实例、Frankfurt 区域、`/healthz` 健康检查。平台自动分配独立网址，不需要 ChatGPT 登录。网站本身使用个人访问密码。
 
 2026-10-28：独立网站已上线，平台返回并验证的网址为 https://ord-swedish-practice.onrender.com/ 。服务 ID：`srv-dbh6e3rl550s73ca706g`，Blueprint ID：`exs-dbgtvquc6qcc73ckegn0`。

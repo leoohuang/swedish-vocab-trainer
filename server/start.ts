@@ -7,11 +7,15 @@ const port = Number(process.env.PORT || 5173);
 const host = process.env.HOST || '127.0.0.1';
 const password = process.env.SITE_PASSWORD || '';
 const publicOrigin = publicSiteOrigin();
-if (!['127.0.0.1', 'localhost', '::1'].includes(host) && (!publicOrigin || !password))
-  throw new Error('独立网站需要设置 PUBLIC_ORIGIN 和 SITE_PASSWORD；本机运行无需设置。');
+const publicAccess = process.env.SITE_ACCESS_MODE !== 'private';
+if (
+  !['127.0.0.1', 'localhost', '::1'].includes(host) &&
+  (!publicOrigin || (!publicAccess && !password))
+)
+  throw new Error('独立网站需要 PUBLIC_ORIGIN；私有模式还需要 SITE_PASSWORD。');
 const authorize = createSiteAuth(password, publicOrigin || `http://${host}:${port}`);
 const root = resolve(process.env.ASSET_DIR || 'dist'),
-  handler = createAiHandler();
+  handler = createAiHandler(undefined, undefined, publicOrigin, { byokOnly: publicAccess });
 const types: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
@@ -28,7 +32,7 @@ createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' }).end('ok');
     return;
   }
-  void authorize(req, res, () => {
+  const serve = () => {
     void handler(req, res, () => {
       void (async () => {
         try {
@@ -58,6 +62,11 @@ createServer((req, res) => {
           }
           res.setHeader('Content-Type', types[extname(target)] || 'application/octet-stream');
           res.setHeader('X-Content-Type-Options', 'nosniff');
+          res.setHeader('Referrer-Policy', 'no-referrer');
+          res.setHeader(
+            'Content-Security-Policy',
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
+          );
           res.setHeader(
             'Cache-Control',
             pathname.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-store',
@@ -68,5 +77,7 @@ createServer((req, res) => {
         }
       })();
     });
-  });
+  };
+  if (publicAccess) serve();
+  else void authorize(req, res, serve);
 }).listen(port, host, () => console.log(`ord. → ${publicOrigin || `http://${host}:${port}`}`));

@@ -1,8 +1,17 @@
 import { z } from 'zod';
+import { getAiConnection, personalAiHeaders } from './ai-connection';
 import type { Draft } from './model';
 import { aiEvidence, materialMode } from '../shared/ai';
 import type { AiRequest, TopicRequest } from '../shared/ai';
-export type AiStatus = { configured: boolean; model: string; provider: string; style: string };
+export type AiStatus = {
+  configured: boolean;
+  model: string;
+  provider: string;
+  style: string;
+  byokOnly?: boolean;
+  supportsUserKey?: boolean;
+  personal?: boolean;
+};
 export type ImportOptions = {
   engine: 'ai' | 'local';
   mode: 'auto' | 'vocabulary' | 'article' | 'mixed';
@@ -22,7 +31,18 @@ export const defaultOptions = (): ImportOptions => ({
 export async function aiStatus(): Promise<AiStatus> {
   const res = await fetch('/api/ai/status');
   if (!res.ok) throw new Error('AI 服务未启动，请通过 npm run dev 或 npm start 运行完整应用。');
-  return res.json();
+  const status: AiStatus = await res.json();
+  const personal = getAiConnection();
+  return personal.key
+    ? {
+        ...status,
+        configured: true,
+        personal: true,
+        model: personal.model,
+        provider: new URL(personal.baseURL).hostname,
+        style: personal.style,
+      }
+    : status;
 }
 const resultSchema = z.object({
   drafts: z
@@ -51,7 +71,7 @@ export async function requestAi(
 ): Promise<{ drafts: Draft[]; summary: string; detectedMode: string; skippedKnown: number }> {
   const res = await fetch('topic' in request ? '/api/ai/generate' : '/api/ai/extract', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...personalAiHeaders() },
     body: JSON.stringify(request),
     signal,
   });

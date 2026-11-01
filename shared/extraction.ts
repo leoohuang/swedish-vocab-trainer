@@ -97,6 +97,7 @@ export async function callModel(
       },
     );
   } catch (error) {
+    if (error instanceof AiError) throw error;
     if (signal?.aborted) throw new AiError(499, '已取消整理。');
     if (timeout.aborted)
       throw new AiError(
@@ -122,11 +123,11 @@ export async function callModel(
         '当前模型需要完成 OpenAI 组织认证。请完成认证后重试，或将 OPENAI_MODEL 改为账户可用的模型（例如 gpt-4.1-mini）。',
       );
     if (response.status === 401)
-      throw new AiError(503, 'API 密钥无效或已失效，请检查服务端 OPENAI_API_KEY。');
+      throw new AiError(503, 'API 密钥无效或已失效，请检查 AI 设置中的 API 密钥。');
     if (response.status === 403)
-      throw new AiError(503, '当前密钥没有模型访问权限，请检查模型权限或更换 OPENAI_MODEL。');
+      throw new AiError(503, '当前密钥没有模型访问权限，请检查模型权限或更换 AI 设置中的模型。');
     if (code === 'model_not_found')
-      throw new AiError(503, '模型不存在或当前密钥没有访问权限，请检查或更换服务端 OPENAI_MODEL。');
+      throw new AiError(503, '模型不存在或当前密钥没有访问权限，请检查或更换 AI 设置中的模型。');
     if (code === 'insufficient_quota')
       throw new AiError(503, 'API 账户额度不足，请检查 API 账户余额和项目预算后重试。');
     if (response.status === 429)
@@ -134,7 +135,7 @@ export async function callModel(
     if (response.status === 404)
       throw new AiError(
         502,
-        '模型接口地址未找到，请检查 OPENAI_BASE_URL 是否包含正确的 API 路径（如 /v1）。',
+        '模型接口地址未找到，请检查 AI 设置中的 Base URL 是否包含正确的 API 路径（如 /v1）。',
       );
     if (code === 'invalid_json_schema' || code === 'unsupported_parameter')
       throw new AiError(502, '模型服务不接受当前结构化输出配置，请检查所选模型和兼容接口。');

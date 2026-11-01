@@ -110,7 +110,7 @@ export function AiOptions({
               <span>
                 {status?.configured
                   ? `${status.provider} · ${status.model}`
-                  : t('尚未配置 AI 密钥：在项目 .env.local 中填写 OPENAI_API_KEY。')}
+                  : t('尚未填写 API 密钥，请打开上方 AI 设置。')}
               </span>
               <button type="button" className="text-button" onClick={onRefresh}>
                 <RefreshCw size={13} />

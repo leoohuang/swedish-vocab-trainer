@@ -103,7 +103,7 @@ export function TopicGenerator({
             {status
               ? status.configured
                 ? `${status.provider} · ${status.model}`
-                : t('AI 服务尚未配置，请先配置服务端密钥。')
+                : t('尚未填写 API 密钥，请打开上方 AI 设置。')
               : t('正在读取 AI 配置…')}
           </span>
           <button type="button" className="text-button" onClick={onRefresh}>
