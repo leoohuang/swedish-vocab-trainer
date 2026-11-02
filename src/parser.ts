@@ -1,3 +1,4 @@
+import { cleanBilingualPair } from '../shared/word-format';
 import Papa from 'papaparse';
 import { uid } from './model';
 import type { Draft } from './model';
@@ -15,6 +16,7 @@ function draft(
   if (Math.max(term.length, meaning.length, note.length, source.length, location.length) > 20000)
     throw new Error('某一行内容超过 20000 个字符，请分段后再导入。');
   term = term.replace(/^\s*(?:[-*•]|\d+[.)、])\s*/, '').trim();
+  ({ term, meaning } = cleanBilingualPair(term, meaning));
   const sentence = /[.!?]$/.test(term) || term.split(/\s+/).length > 6;
   const issue = !term
     ? '缺少瑞典语词条'

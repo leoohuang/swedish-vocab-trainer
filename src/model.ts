@@ -1,3 +1,4 @@
+import { cleanBilingualPair } from '../shared/word-format';
 import type { AudioSettings } from './audio';
 import type { AiEvidence } from '../shared/ai';
 export type Draft = {
@@ -73,8 +74,14 @@ export const normalize = (text: string) =>
   text.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('sv');
 export const wordKey = (word: Pick<Word, 'term' | 'meaning'>) =>
   `${normalize(word.term)}\u0000${normalize(word.meaning)}`;
-export const spellingAnswer = (word: Pick<Word, 'term'>) =>
-  word.term.replace(/^(en|ett)\s+/i, '').trim();
+export const spellingAnswer = (word: Pick<Word, 'term'> & Partial<Pick<Word, 'meaning'>>) =>
+  cleanBilingualPair(word.term, word.meaning || '')
+    .term.replace(/^(en|ett)\s+/i, '')
+    .trim();
+export const normalizeSpelling = (value: string) =>
+  normalize(value)
+    .replace(/[.!?。！？]+$/, '')
+    .trimEnd();
 export const hasPassed = (word: Pick<Word, 'passed'>) => word.passed === true;
 export const sessionPassed = (s: Session) =>
   s.ids.length > 0 && s.ids.every((id) => (s.scores[id]?.wins ?? 0) >= 2);
@@ -144,7 +151,9 @@ export function answerSession(s: Session, word: Word, answer: string): Session {
   const task = s.tasks[s.position];
   if (!task || task.wordId !== word.id) return s;
   const correct =
-    normalize(answer) === normalize(task.type === 'spell' ? spellingAnswer(word) : word.meaning);
+    task.type === 'spell'
+      ? normalizeSpelling(answer) === normalizeSpelling(spellingAnswer(word))
+      : normalize(answer) === normalize(word.meaning);
   const score = { ...s.scores[word.id] };
   if (task.type === 'spell') {
     score.tries++;

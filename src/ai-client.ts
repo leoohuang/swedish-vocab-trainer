@@ -1,3 +1,4 @@
+import { cleanBilingualPair } from '../shared/word-format';
 import { z } from 'zod';
 import { getAiConnection, personalAiHeaders } from './ai-connection';
 import type { Draft } from './model';
@@ -89,5 +90,11 @@ export async function requestAi(
     );
   const result = resultSchema.safeParse(raw);
   if (!result.success) throw new Error('AI 返回内容未通过校验，原文仍保留。');
-  return result.data;
+  return {
+    ...result.data,
+    drafts: result.data.drafts.map((row) => ({
+      ...row,
+      ...cleanBilingualPair(row.term, row.meaning),
+    })),
+  };
 }

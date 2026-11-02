@@ -1,3 +1,4 @@
+import { cleanBilingualPair } from '../shared/word-format';
 import { withWordGroups } from './groups';
 import { aiEvidence } from '../shared/ai';
 import { get, update } from 'idb-keyval';
@@ -113,6 +114,28 @@ export function validateData(raw: unknown): Data {
       w.passed === undefined && s.scores[w.id] ? { ...w, passed: s.scores[w.id].wins >= 2 } : w,
     );
     d.session = resumeIncompleteSession(s);
+  }
+  // Repair the old bilingual split without changing IDs, sources, or mastery.
+  const meaningRepairs = new Map<string, string>();
+  d.words = d.words.map((word) => {
+    const clean = cleanBilingualPair(word.term, word.meaning);
+    if (clean.meaning !== word.meaning) meaningRepairs.set(word.meaning, clean.meaning);
+    return { ...word, ...clean };
+  });
+  d.decks = d.decks.map((deck) => ({
+    ...deck,
+    pending: deck.pending.map((row) => ({ ...row, ...cleanBilingualPair(row.term, row.meaning) })),
+  }));
+  if (d.session) {
+    d.session.tasks = d.session.tasks.map((task) =>
+      task.options
+        ? { ...task, options: task.options.map((option) => meaningRepairs.get(option) ?? option) }
+        : task,
+    );
+    if (d.session.tasks[d.session.position]?.type === 'choice' && d.session.feedback) {
+      d.session.feedback.answer =
+        meaningRepairs.get(d.session.feedback.answer) ?? d.session.feedback.answer;
+    }
   }
   return withWordGroups(d);
 }

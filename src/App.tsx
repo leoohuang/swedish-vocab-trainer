@@ -2634,6 +2634,7 @@ function Practice({
                     <span
                       key={i}
                       className={
+                        !s.feedback!.correct &&
                         normalize(s.feedback!.answer[i] || '') !== normalize(c)
                           ? 'letter-difference'
                           : ''
