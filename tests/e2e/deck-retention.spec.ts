@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
-async function addDeck(page: Page, term: string, first = false) {
+async function addDeck(page: Page, term: string, first = false, saved = true) {
   await page
     .getByRole('button', { name: first ? '导入我的单词' : '导入单词', exact: true })
     .click();
@@ -9,7 +9,7 @@ async function addDeck(page: Page, term: string, first = false) {
   await page.getByLabel('你的学习材料').fill(`${term} - 测试释义`);
   await page.getByRole('button', { name: '整理单词', exact: true }).click();
   await page.getByRole('button', { name: '保存词库', exact: true }).click();
-  await expect(page.getByText(term, { exact: true })).toBeVisible();
+  if (saved) await expect(page.getByText(term, { exact: true })).toBeVisible();
 }
 async function stored(page: Page) {
   return page.evaluate(async () => {
@@ -62,7 +62,10 @@ test('旧标签页保存不会覆盖另一页新增的词库', async ({ page, co
     .click();
   await addDeck(page, 'banan');
   await expect.poll(async () => (await stored(page)).decks.length).toBe(2);
-  await addDeck(stale, 'citron');
+  await addDeck(stale, 'citron', false, false);
+  await expect(stale.getByRole('textbox', { name: '瑞典语词条', exact: true })).toHaveValue(
+    'citron',
+  );
   await expect(stale.getByRole('alert')).toContainText('另一个标签页已更新词库');
   const saved = await stored(page);
   expect(saved.decks).toHaveLength(2);

@@ -103,7 +103,7 @@ export function TopicGenerator({
             {status
               ? status.configured
                 ? `${status.provider} · ${status.model}`
-                : t('尚未填写 API 密钥，请打开上方 AI 设置。')
+                : t('尚未填写 API 密钥，请点击“打开 AI 设置”。')
               : t('正在读取 AI 配置…')}
           </span>
           <button type="button" className="text-button" onClick={onRefresh}>
@@ -111,16 +111,12 @@ export function TopicGenerator({
             {t('刷新状态')}
           </button>
         </div>
-        <label className="known-check">
-          <input
-            type="checkbox"
-            checked={options.consent}
-            onChange={(e) => onChange({ consent: e.target.checked })}
-          />
-          {t('同意将本次主题、SFI 课程和词数发送至 ')}
-          {status?.provider || t('配置的模型服务')}
-          {t('；不发送已有词库和学习记录。')}
-        </label>
+        <p className="ai-send-notice">
+          {t(
+            '点击“生成词表”即同意将本次主题和课程设置发送至 {0}，不发送已有词库和学习记录。',
+            status?.provider || t('所选服务商'),
+          )}
+        </p>
       </fieldset>
     </section>
   );

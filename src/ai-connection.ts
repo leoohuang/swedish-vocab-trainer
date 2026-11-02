@@ -2,6 +2,14 @@ import { useSyncExternalStore } from 'react';
 import { connectionSchema, defaultConnection } from '../shared/connection';
 import type { UserConnection } from '../shared/connection';
 const preferenceKey = 'ord-ai-preferences';
+const credentialKey = 'ord-ai-key';
+export const remembersAiKey = () => {
+  try {
+    return !!localStorage.getItem(credentialKey);
+  } catch {
+    return false;
+  }
+};
 function initial(): UserConnection {
   try {
     const preferences = JSON.parse(localStorage.getItem(preferenceKey) || '{}');
@@ -9,6 +17,10 @@ function initial(): UserConnection {
       ...preferences,
       key: 'preference-validation-only',
     });
+    const saved = connectionSchema.safeParse(
+      JSON.parse(localStorage.getItem(credentialKey) || 'null'),
+    );
+    if (saved.success) return saved.data;
     if (result.success) return { ...result.data, key: '' };
   } catch {
     /* Use defaults when storage is unavailable. */
@@ -18,7 +30,7 @@ function initial(): UserConnection {
 let connection = initial();
 const listeners = new Set<() => void>();
 export const getAiConnection = () => connection;
-export function setAiConnection(next: UserConnection) {
+export function setAiConnection(next: UserConnection, remember = false) {
   const validated = connectionSchema.parse(next);
   const url = new URL(validated.baseURL);
   if (
@@ -30,16 +42,24 @@ export function setAiConnection(next: UserConnection) {
     (url.port && url.port !== '443')
   )
     throw new Error('请填写不含账号或参数的 HTTPS Base URL（443 端口）。');
-  connection = { ...validated, baseURL: url.href.replace(/\/$/, '') };
-  const { key: _key, ...preferences } = connection;
+  const nextConnection = { ...validated, baseURL: url.href.replace(/\/$/, '') };
+  const { key: _key, ...preferences } = nextConnection;
   try {
+    if (remember) localStorage.setItem(credentialKey, JSON.stringify(nextConnection));
+    else localStorage.removeItem(credentialKey);
     localStorage.setItem(preferenceKey, JSON.stringify(preferences));
   } catch {
-    /* Optional non-secret preferences. */
+    if (remember) throw new Error('无法在此浏览器保存密钥，请关闭记住选项后重试。');
   }
+  connection = nextConnection;
   listeners.forEach((notify) => notify());
 }
 export function clearAiKey() {
+  try {
+    localStorage.removeItem(credentialKey);
+  } catch {
+    /* Memory-only browsers. */
+  }
   connection = { ...connection, key: '' };
   listeners.forEach((notify) => notify());
 }

@@ -49,7 +49,7 @@ import {
 } from 'lucide-react';
 import { DEMO, parseText, readFile, materialBlocks, readMaterial } from './parser';
 import { AiOptions } from './AiOptions';
-import { AiConnectionSettings } from './AiConnectionSettings';
+import { AiConnectionSettings, AiConnectionSummary } from './AiConnectionSettings';
 import { useAiConnection } from './ai-connection';
 import { TopicGenerator, defaultTopicOptions } from './TopicOptions';
 import type { TopicOptions } from './TopicOptions';
@@ -156,6 +156,7 @@ export default function App() {
     [deckId, setDeckId] = useState<string | null>(savedDeck),
     [search, setSearch] = useState(''),
     [filter, setFilter] = useState('all');
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [importing, setImporting] = useState(false),
     [drafts, setDrafts] = useState<Draft[] | null>(null),
     [text, setText] = useState(''),
@@ -384,7 +385,12 @@ export default function App() {
       setDeckName(`${next.topic.trim() || t('主题词表')} · SFI ${next.sfiLevel}`.slice(0, 100));
   }
   async function generateTopic() {
-    if (!topicOptions.topic.trim() || !topicOptions.consent) return;
+    if (!topicOptions.topic.trim()) return;
+    if (!aiState?.configured) {
+      setImportError(t('请先在 AI 设置中保存 API Key。'));
+      setAiSettingsOpen(true);
+      return;
+    }
     const controller = new AbortController();
     abortAi.current = controller;
     setBusy(true);
@@ -429,8 +435,9 @@ export default function App() {
       }
       return;
     }
-    if (!aiOptions.consent) {
-      setImportError(t('请先勾选同意发送本次材料文字。'));
+    if (!aiState?.configured) {
+      setImportError(t('请先在 AI 设置中保存 API Key。'));
+      setAiSettingsOpen(true);
       return;
     }
     const controller = new AbortController();
@@ -501,8 +508,8 @@ export default function App() {
         }) || null,
     );
   }
-  function commitImport() {
-    if (!drafts || !deckName.trim()) return;
+  async function commitImport() {
+    if (busy || !drafts || !deckName.trim()) return;
     const id = pendingDeck || uid(),
       existing = new Map(
         data.words.filter((w) => w.deckId === id).map((w) => [wordKey(w), { ...w }]),
@@ -546,16 +553,30 @@ export default function App() {
       existing.set(key, word);
       words.push(word);
     }
-    setData((old) => ({
-      ...old,
+    const nextData: Data = {
+      ...data,
       words: assignWordGroups([
-        ...old.words.map((w) => (w.deckId === id ? existing.get(wordKey(w)) || w : w)),
+        ...data.words.map((w) => (w.deckId === id ? existing.get(wordKey(w)) || w : w)),
         ...words,
       ]),
       decks: pendingDeck
-        ? old.decks.map((d) => (d.id === id ? { ...d, name: deckName.trim(), pending } : d))
-        : [...old.decks, { id, name: deckName.trim(), created: Date.now(), pending }],
-    }));
+        ? data.decks.map((d) => (d.id === id ? { ...d, name: deckName.trim(), pending } : d))
+        : [...data.decks, { id, name: deckName.trim(), created: Date.now(), pending }],
+    };
+    setBusy(true);
+    try {
+      await saveData(nextData);
+      setData(nextData);
+    } catch (error) {
+      setImportError(
+        error instanceof Error
+          ? error.message
+          : t('保存失败：请先导出备份，并检查浏览器存储空间。'),
+      );
+      return;
+    } finally {
+      setBusy(false);
+    }
     setImporting(false);
     setDrafts(null);
     setPage('library');
@@ -1676,7 +1697,7 @@ export default function App() {
               </small>
             </div>
           </div>
-          {!drafts && <AiConnectionSettings compact />}
+          {!drafts && <AiConnectionSummary onManage={() => setAiSettingsOpen(true)} />}
           {!drafts ? (
             importKind === 'topic' ? (
               <TopicGenerator
@@ -1906,7 +1927,7 @@ export default function App() {
               {drafts ? (
                 <button
                   className="button primary"
-                  disabled={!drafts.length || !deckName.trim()}
+                  disabled={busy || !drafts.length || !deckName.trim()}
                   onClick={commitImport}
                 >
                   {t('保存词库')}
@@ -1915,12 +1936,7 @@ export default function App() {
               ) : importKind === 'topic' ? (
                 <button
                   className="button primary"
-                  disabled={
-                    busy ||
-                    !topicOptions.topic.trim() ||
-                    !topicOptions.consent ||
-                    !aiState?.configured
-                  }
+                  disabled={busy || !topicOptions.topic.trim() || !aiState?.configured}
                   onClick={generateTopic}
                 >
                   {busy ? t('AI 正在生成…') : t('生成词表')}
@@ -1930,9 +1946,7 @@ export default function App() {
                 <button
                   className="button primary"
                   disabled={
-                    busy ||
-                    !text.trim() ||
-                    (aiOptions.engine === 'ai' && (!aiOptions.consent || !aiState?.configured))
+                    busy || !text.trim() || (aiOptions.engine === 'ai' && !aiState?.configured)
                   }
                   onClick={parse}
                 >
@@ -1952,6 +1966,16 @@ export default function App() {
             ref={fileRef}
             accept=".txt,.md,.csv,.xlsx,.docx,.pdf"
             onChange={upload}
+          />
+        </Modal>
+      )}
+      {aiSettingsOpen && (
+        <Modal title={t('AI 设置')} onClose={() => setAiSettingsOpen(false)}>
+          <AiConnectionSettings
+            onSaved={() => {
+              refreshAiStatus();
+              setAiSettingsOpen(false);
+            }}
           />
         </Modal>
       )}

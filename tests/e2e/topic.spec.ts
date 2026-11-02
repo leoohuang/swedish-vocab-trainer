@@ -51,7 +51,6 @@ test('选择主题和 SFI 后生成，编辑保存，刷新后仍能练习并保
   await page.getByRole('button', { name: '看病就医', exact: true }).click();
   await page.getByLabel('SFI 课程', { exact: true }).selectOption('C');
   await page.getByLabel('词库名称', { exact: true }).fill('第 3 单元 · 医疗');
-  await page.getByRole('checkbox', { name: /同意将本次主题/ }).check();
   await page.getByRole('button', { name: '生成词表', exact: true }).click();
   await expect(page.getByText('AI 生成例句 · 请核对', { exact: true })).toBeVisible();
   expect(body).toEqual({ topic: '看病就医', sfiLevel: 'C', count: 10, consent: true });
@@ -96,7 +95,6 @@ test('失败和取消保留主题，手机下无需材料即可生成', async ({
   }
   await page.getByLabel('词表主题').fill('找工作');
   await page.getByLabel('SFI 课程', { exact: true }).selectOption('D');
-  await page.getByRole('checkbox', { name: /同意将本次主题/ }).check();
   await page.getByRole('button', { name: '生成词表', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('模型暂时不可用');
   await expect(page.getByLabel('词表主题')).toHaveValue('找工作');

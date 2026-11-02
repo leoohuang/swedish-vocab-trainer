@@ -148,3 +148,35 @@ it('公开请求不能通过额外请求体字段选用站长的密钥', async (
     expect(getConfig).not.toHaveBeenCalled();
   });
 });
+
+it('Anthropic 使用原生 Messages、独立密钥头与结构化输出，不混用 OpenAI 授权', async () => {
+  const { callModel } = await import('../shared/extraction');
+  const fetcher = vi.fn(
+    async () =>
+      new Response(
+        JSON.stringify({
+          stop_reason: 'end_turn',
+          content: [{ type: 'text', text: JSON.stringify(output) }],
+        }),
+      ),
+  );
+  const config = {
+    key: 'SYNTHETIC-ANTHROPIC-KEY',
+    model: 'claude-haiku-5-5',
+    baseURL: 'https://api.anthropic.com/v1',
+    style: 'anthropic' as const,
+  };
+  const result = await callModel(config, payload as any, [], fetcher);
+  expect(result.words[0].term).toBe('en bok');
+  const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toBe('https://api.anthropic.com/v1/messages');
+  const headers = new Headers(init.headers);
+  expect(headers.get('x-api-key')).toBe(config.key);
+  expect(headers.get('authorization')).toBeNull();
+  expect(headers.get('anthropic-version')).toBe('2023-06-01');
+  const body = JSON.parse(init.body as string);
+  expect(body.output_config.format.type).toBe('json_schema');
+  expect(body).not.toHaveProperty('response_format');
+  expect(body).not.toHaveProperty('text');
+  expect(body.system).toContain('Swedish');
+});

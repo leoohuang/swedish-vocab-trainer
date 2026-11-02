@@ -28,7 +28,7 @@ Code and project notes: https://github.com/leoohuang/swedish-vocab-trainer
 
 Website: https://ord-swedish-practice.onrender.com/
 
-The site is publicly accessible. Local parsing and practice need no API key; AI generation and extraction require the visitor’s own OpenAI or compatible API key. The key passes through the app backend to the selected provider and clears on reload. Do not include an API key in the post.
+The site is publicly accessible. Local parsing and practice need no API key; AI generation and extraction require the visitor’s own OpenAI, Anthropic, or compatible API key. The key passes through the app backend to the selected provider and can optionally be remembered in the visitor’s browser. Do not include an API key in the post.
 
 Repository: https://github.com/leoohuang/swedish-vocab-trainer
 

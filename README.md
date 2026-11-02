@@ -28,17 +28,17 @@ Practice starts with meaning recognition, then moves to spelling. Each group con
 
 The website is open without a login. AI extraction and topic generation require your own API key; importing a separated list and practicing do not.
 
-Open **Data & settings → Personal AI settings**, or **Use your own API / AI settings** in the import window. Choose OpenAI or a custom OpenAI-compatible provider, enter the Base URL, model, API format, and key, then select **Use this API on this page**.
+Open **Data & settings → AI service**, choose OpenAI, Anthropic, or a custom provider, enter your API key, and select **Save AI settings**. OpenAI and Anthropic come with preset connection settings; custom endpoints and model overrides are under **Advanced settings**. The import window also links to these settings without discarding your material.
 
-Both Responses API and Chat Completions are supported. Custom models must support JSON Schema structured output, and custom endpoints must use a public HTTPS domain on port 443.
+OpenAI Responses, Chat Completions, and Anthropic Messages are supported. Custom models must support JSON Schema structured output, and custom endpoints must use a public HTTPS domain on port 443.
 
-Your provider charges your account for AI requests. The key stays in page memory and clears on reload. Requests pass through the app's backend to your chosen provider; keys are not saved in browser storage or backups, or logged by the application. See [API setup and deployment](docs/public-byok.md) for details.
+Your provider charges your account for AI requests. With **Remember this device** enabled, the key is stored in this browser for future visits. Turn it off for page-only use, or choose **Clear key** to remove it. Requests pass through the app's backend to your chosen provider; keys are excluded from deck backups and are not stored or logged on the server. Only remember a key on a personal device you trust. See [API setup and deployment](docs/public-byok.md) for details.
 
 ## Your data
 
 Decks and progress are saved in your browser, with no account or cross-device sync. A different browser, device, or website address has separate data. Export a JSON backup before clearing browser data, and use **Merge a backup** to move your collection.
 
-Files are read locally. AI receives the material or topic only after you consent. If you enable “skip known words,” practiced terms are also sent. The interface loads fonts from Google Fonts; pronunciation uses your device's speech service.
+Files are read locally. AI receives the material or topic only when you click the AI action, beside a notice describing what will be sent. If you enable “skip known words,” practiced terms are also sent. The interface loads fonts from Google Fonts; pronunciation uses your device's speech service.
 
 ## Run locally
 

@@ -29,22 +29,35 @@ export const defaultOptions = (): ImportOptions => ({
   skipKnown: false,
   consent: false,
 });
-export async function aiStatus(): Promise<AiStatus> {
-  const res = await fetch('/api/ai/status');
-  if (!res.ok) throw new Error('AI 服务未启动，请通过 npm run dev 或 npm start 运行完整应用。');
-  const status: AiStatus = await res.json();
+function personalStatus(): AiStatus | null {
   const personal = getAiConnection();
   return personal.key
     ? {
-        ...status,
         configured: true,
         personal: true,
+        byokOnly: true,
+        supportsUserKey: true,
         model: personal.model,
         provider: new URL(personal.baseURL).hostname,
         style: personal.style,
       }
-    : status;
+    : null;
 }
+export async function aiStatus(): Promise<AiStatus> {
+  const personal = personalStatus();
+  if (personal) return personal;
+  try {
+    const res = await fetch('/api/ai/status');
+    if (!res.ok) throw new Error('AI 服务未启动，请通过 npm run dev 或 npm start 运行完整应用。');
+    const status: AiStatus = await res.json();
+    return personalStatus() || status;
+  } catch (error) {
+    const latest = personalStatus();
+    if (latest) return latest;
+    throw error;
+  }
+}
+
 const resultSchema = z.object({
   drafts: z
     .array(

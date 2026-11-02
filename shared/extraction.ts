@@ -10,7 +10,12 @@ export class AiError extends Error {
     super(message);
   }
 }
-export type AiConfig = { key: string; model: string; baseURL: string; style: 'responses' | 'chat' };
+export type AiConfig = {
+  key: string;
+  model: string;
+  baseURL: string;
+  style: 'responses' | 'chat' | 'anthropic';
+};
 const compact = (s: string) => s.normalize('NFC').replace(/\s+/g, ' ').trim();
 const termKey = (s: string) =>
   compact(s)
@@ -55,43 +60,58 @@ export async function callModel(
     schema: modelResultSchema,
   };
   const body =
-    config.style === 'responses'
+    config.style === 'anthropic'
       ? {
           model: config.model,
-          store: false,
-          input: [
-            {
-              role: 'system',
-              content: system,
-            },
-            { role: 'user', content: prompt },
-          ],
-          text: { format },
-          max_output_tokens: 16000,
+          max_tokens: 16000,
+          system,
+          messages: [{ role: 'user', content: prompt }],
+          output_config: { format: { type: 'json_schema', schema: modelResultSchema } },
         }
-      : {
-          model: config.model,
-          messages: [
-            {
-              role: 'system',
-              content: system,
+      : config.style === 'responses'
+        ? {
+            model: config.model,
+            store: false,
+            input: [
+              {
+                role: 'system',
+                content: system,
+              },
+              { role: 'user', content: prompt },
+            ],
+            text: { format },
+            max_output_tokens: 16000,
+          }
+        : {
+            model: config.model,
+            messages: [
+              {
+                role: 'system',
+                content: system,
+              },
+              { role: 'user', content: prompt },
+            ],
+            response_format: {
+              type: 'json_schema',
+              json_schema: { name: format.name, strict: true, schema: modelResultSchema },
             },
-            { role: 'user', content: prompt },
-          ],
-          response_format: {
-            type: 'json_schema',
-            json_schema: { name: format.name, strict: true, schema: modelResultSchema },
-          },
-          max_completion_tokens: 16000,
-        };
+            max_completion_tokens: 16000,
+          };
   const timeout = AbortSignal.timeout(120000);
   let response: Response;
   try {
     response = await fetcher(
-      `${config.baseURL}/${config.style === 'responses' ? 'responses' : 'chat/completions'}`,
+      `${config.baseURL}/${config.style === 'anthropic' ? 'messages' : config.style === 'responses' ? 'responses' : 'chat/completions'}`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.key}` },
+        headers:
+          config.style === 'anthropic'
+            ? {
+                'Content-Type': 'application/json',
+                'x-api-key': config.key,
+                'anthropic-version': '2023-06-01',
+              }
+            : { 'Content-Type': 'application/json', Authorization: `Bearer ${config.key}` },
         body: JSON.stringify(body),
         signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
       },
@@ -144,22 +164,30 @@ export async function callModel(
   }
   const raw = (await response.json()) as {
     status?: string;
+    stop_reason?: string;
+    content?: { type: string; text?: string }[];
     output?: { content?: { type?: string; text?: string }[] }[];
     choices?: { finish_reason?: string; message?: { content?: string; refusal?: string } }[];
   };
   if (
+    (config.style === 'anthropic' && raw.stop_reason !== 'end_turn') ||
     (config.style === 'responses' && raw.status !== 'completed') ||
     (config.style === 'chat' && raw.choices?.[0]?.finish_reason !== 'stop')
   )
     throw new AiError(502, '模型未完整返回结果，未导入任何词条。请缩小材料后重试。');
   const content =
-    config.style === 'responses'
-      ? raw.output
-          ?.flatMap((o) => o.content || [])
-          .filter((c) => c.type === 'output_text')
+    config.style === 'anthropic'
+      ? raw.content
+          ?.filter((c) => c.type === 'text')
           .map((c) => c.text || '')
           .join('')
-      : raw.choices?.[0]?.message?.content;
+      : config.style === 'responses'
+        ? raw.output
+            ?.flatMap((o) => o.content || [])
+            .filter((c) => c.type === 'output_text')
+            .map((c) => c.text || '')
+            .join('')
+        : raw.choices?.[0]?.message?.content;
   if (!content) throw new AiError(502, '模型没有返回可整理的内容，可能拒绝了请求。原文仍保留。');
   try {
     return modelResult.parse(JSON.parse(content));

@@ -13,7 +13,7 @@ export const connectionSchema = z.object({
     .max(200)
     .regex(/^[a-zA-Z0-9._:/@+-]+$/),
   baseURL: z.string().trim().url().max(2000),
-  style: z.enum(['responses', 'chat']),
+  style: z.enum(['responses', 'chat', 'anthropic']),
 });
 export type UserConnection = z.infer<typeof connectionSchema>;
 export const defaultConnection = (): UserConnection => ({

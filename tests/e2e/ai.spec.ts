@@ -45,8 +45,7 @@ test('课文模式、水平与目标传入接口，原句和推荐原因保存�
   await page.getByLabel('材料类型', { exact: true }).selectOption('article');
   await page.getByLabel('学习水平', { exact: true }).selectOption('intermediate');
   await page.getByLabel('课文推荐词数', { exact: true }).selectOption('20');
-  await expect(page.getByRole('button', { name: '用 AI 整理', exact: true })).toBeDisabled();
-  await page.getByRole('checkbox', { name: /同意将本次材料文字/ }).check();
+  await expect(page.getByRole('button', { name: '用 AI 整理', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: '用 AI 整理', exact: true }).click();
   await expect(page.getByText('推荐原因', { exact: true })).toBeVisible();
   await expect(page.getByText('AI 补充释义 · 请核对', { exact: true })).toBeVisible();
@@ -70,7 +69,6 @@ test('AI 失败保留材料并可重试，不自动退回规则伪装成功', as
     r.fulfill({ status: 502, json: { error: '模型服务当前限流，请稍后重试。' } }),
   );
   await page.getByLabel('你的学习材料').fill(lesson);
-  await page.getByRole('checkbox', { name: /同意将本次材料文字/ }).check();
   await page.getByRole('button', { name: '用 AI 整理', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('限流');
   await expect(page.getByLabel('你的学习材料')).toHaveValue(lesson);
@@ -95,7 +93,6 @@ test('默认无密钥时明确显示未配置，不发送材料', async ({ page 
   await page.goto('/');
   await page.getByRole('button', { name: '导入我的单词' }).click();
   await page.getByLabel('你的学习材料').fill(lesson);
-  await page.getByRole('checkbox', { name: /同意将本次材料文字/ }).check();
   await expect(page.getByRole('button', { name: '用 AI 整理', exact: true })).toBeDisabled();
   await expect(page.getByText(/尚未填写 API 密钥/)).toBeVisible();
   expect(calls).toBe(0);
@@ -134,7 +131,6 @@ test('填写密钥后回到窗口会刷新配置状态，无须重开材料', as
   await page.getByRole('button', { name: '导入我的单词' }).click();
   await expect(page.getByText(/尚未填写 API 密钥/)).toBeVisible();
   await page.getByLabel('你的学习材料').fill(lesson);
-  await page.getByRole('checkbox', { name: /同意将本次材料文字/ }).check();
   await expect(page.getByRole('button', { name: '用 AI 整理', exact: true })).toBeDisabled();
   configured = true;
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));

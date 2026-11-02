@@ -4634,3 +4634,148 @@ html[lang='en'] .practice-progress > div:first-child {
     transform: none;
   }
 }
+
+.provider-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin: 18px 0;
+}
+.provider-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 100px;
+  border: 1px solid #bfcdbd;
+  border-radius: 9px;
+  background: #fffef9;
+  color: #345345;
+  position: relative;
+  font-size: 12px;
+}
+.provider-choice img {
+  object-fit: contain;
+}
+.provider-choice.selected {
+  background: #eaf1e3;
+  border-color: #416c50;
+  box-shadow: inset 0 0 0 1px #416c50;
+  color: #204b35;
+}
+.provider-choice > svg:last-child:not(:first-child) {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+}
+.provider-choice:focus-visible {
+  outline: 3px solid #bd8528;
+  outline-offset: 3px;
+}
+.ai-connection-form label.remember-ai-key {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 14px;
+}
+.remember-ai-key input {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: #315d44;
+}
+.remember-ai-key small {
+  display: block;
+  font-size: 11px;
+  color: #536953;
+  margin-top: 3px;
+}
+.ai-advanced {
+  margin: 18px 0;
+  padding: 13px 0;
+  border-top: 1px solid #dae2d0;
+  border-bottom: 1px solid #dae2d0;
+}
+.ai-advanced summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: #3c5d46;
+  overflow-wrap: anywhere;
+}
+.ai-advanced .ai-connection-fields {
+  margin-top: 15px;
+}
+.ai-advanced p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #536953;
+  margin-top: 10px;
+}
+.ai-connection-message.saved {
+  color: #285b39;
+}
+.ai-connection-summary {
+  margin: 18px 25px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #eff4e7;
+  padding: 14px;
+  border: 1px solid #d4dfc9;
+  border-radius: 8px;
+}
+.ai-connection-summary .provider-logo {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.ai-connection-summary > div {
+  flex: 1;
+  min-width: 0;
+}
+.ai-connection-summary strong {
+  font-size: 12px;
+}
+.ai-connection-summary p {
+  font-size: 10px;
+  color: #4d644c;
+  margin-top: 5px;
+  line-height: 1.6;
+}
+.ai-connection-summary .text-button {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.ai-send-notice {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #425f49;
+  background: #f0f5e9;
+  border-radius: 5px;
+  padding: 11px;
+  margin-top: 13px;
+}
+@media (max-width: 540px) {
+  .provider-choices {
+    gap: 6px;
+  }
+  .provider-choice {
+    min-height: 90px;
+    font-size: 11px;
+  }
+  .ai-connection-summary {
+    margin: 15px 20px 0;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+  .ai-connection-summary .text-button {
+    margin-left: 43px;
+  }
+}

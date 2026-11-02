@@ -56,8 +56,8 @@ test('实际构建的公开网站无需密码，严格 CSP 下可填个人 API�
     expect(await denied.text()).not.toContain('synthetic-owner-key');
     await page.getByRole('button', { name: 'Data & settings', exact: true }).click();
     await page.getByLabel('API Key', { exact: true }).fill('synthetic-test-browser-key');
-    await page.getByRole('button', { name: 'Use this API on this page', exact: true }).click();
-    await expect(page.getByText(/Your API settings are enabled/)).toBeVisible();
+    await page.getByRole('button', { name: 'Save AI settings', exact: true }).click();
+    await expect(page.getByText(/AI settings saved/)).toBeVisible();
     await page.getByRole('button', { name: 'Clear key', exact: true }).click();
     await expect(page.getByLabel('API Key', { exact: true })).toHaveValue('');
   } finally {

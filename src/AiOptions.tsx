@@ -110,25 +110,19 @@ export function AiOptions({
               <span>
                 {status?.configured
                   ? `${status.provider} · ${status.model}`
-                  : t('尚未填写 API 密钥，请打开上方 AI 设置。')}
+                  : t('尚未填写 API 密钥，请点击“打开 AI 设置”。')}
               </span>
               <button type="button" className="text-button" onClick={onRefresh}>
                 <RefreshCw size={13} />
                 {t('刷新状态')}
               </button>
             </div>
-            <label className="consent-check">
-              <input
-                type="checkbox"
-                checked={o.consent}
-                onChange={(e) => onChange({ consent: e.target.checked })}
-              />
-              <span>
-                {t('同意将本次材料文字发送至 ')}
-                {status?.provider || t('配置的模型服务')}{' '}
-                {t('进行整理；不发送文件原件或学习记录。')}
-              </span>
-            </label>
+            <p className="ai-send-notice">
+              {t(
+                '点击“用 AI 整理”即同意将本次文字发送至 {0}，不发送文件原件或学习记录。',
+                status?.provider || t('所选服务商'),
+              )}
+            </p>
           </>
         ) : (
           <p className="ai-mode-help">
