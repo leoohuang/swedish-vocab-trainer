@@ -4417,3 +4417,220 @@ html[lang='en'] .practice-progress > div:first-child {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Keep the deck context visible and give review its own available/selected states. */
+.modal.study-picker[open] {
+  display: flex;
+  flex-direction: column;
+  width: min(660px, calc(100vw - 32px));
+  overflow: hidden;
+}
+.study-picker .modal-head,
+.study-picker .modal-footer {
+  flex-shrink: 0;
+}
+.study-picker .modal-head h2 {
+  font-size: 24px;
+}
+.picker-body {
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.picker-deck-control {
+  padding: 22px 25px 0;
+}
+.picker-deck-control label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #456255;
+}
+.picker-deck-control select {
+  width: 100%;
+  font-size: 15px;
+  color: #193f33;
+  border: 1px solid #b7cbbf;
+  background-color: #fff;
+  min-height: 46px;
+  border-radius: 7px;
+  padding: 10px 12px;
+}
+.picker-deck-control p {
+  font-size: 11px;
+  color: #526b5f;
+  margin-top: 9px;
+  line-height: 1.6;
+}
+.study-picker .group-choices {
+  max-height: none;
+  overflow: visible;
+}
+.study-picker .picker-list {
+  max-height: none;
+  overflow: visible;
+}
+.study-picker .group-plan-heading {
+  margin-bottom: 16px;
+}
+.study-picker .group-plan-heading p {
+  color: #526b5f;
+  font-size: 11px;
+}
+.study-picker .group-picker-tabs button {
+  min-height: 40px;
+  font-size: 12px;
+}
+.study-picker .study-group {
+  padding: 16px;
+  background: #fff;
+  color: #193f33;
+  border-color: #b7cbbf;
+}
+.study-picker .study-group h3 {
+  font-size: 22px;
+  margin-top: 14px;
+}
+.study-picker .study-group h3 small {
+  font-size: 11px;
+  color: #526b5f;
+}
+.study-picker .study-group-terms {
+  font-size: 12px;
+  color: #3d6050;
+  margin-top: 10px;
+}
+.study-picker .study-group-bottom {
+  color: #345c49;
+  font-size: 11px;
+  border-color: #d5e1d9;
+}
+.study-picker .study-group.completed:not(.chosen) {
+  background: #f4f6ee;
+  color: #50634f;
+}
+.study-picker .study-group:hover {
+  background: #f0f7f1;
+  border-color: #55806a;
+  transform: translateY(-1px);
+}
+.study-picker .study-group:focus-visible {
+  outline: 3px solid #bd8528;
+  outline-offset: 3px;
+}
+.group-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0;
+  color: #3e6653;
+  background: #eaf3ed;
+  border-radius: 4px;
+  padding: 4px 7px;
+}
+.group-state.due {
+  background: #fff0d2;
+  color: #805310;
+}
+.group-selection {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+}
+.study-picker .study-group.chosen {
+  background: #214e40;
+  color: #fff;
+  border-color: #214e40;
+  box-shadow: 0 3px 0 #153a2f;
+}
+.study-picker .study-group.chosen h3 small,
+.study-picker .study-group.chosen .study-group-terms,
+.study-picker .study-group.chosen .study-group-bottom {
+  color: #f0f6ef;
+}
+.study-picker .study-group.chosen .study-group-bottom {
+  border-color: #ffffff40;
+}
+.study-picker .study-group.chosen .group-state {
+  color: #fff;
+  background: #ffffff1f;
+}
+.study-picker .study-group.chosen .group-state.due {
+  background: #ffedc4;
+  color: #765014;
+}
+.study-picker .study-group.chosen .group-selection {
+  border-radius: 50%;
+  background: #e6f3cf;
+  color: #244e3a;
+}
+.study-picker .group-preview {
+  padding-top: 14px;
+  margin-top: 18px;
+}
+.study-picker .group-preview summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: #42604e;
+  line-height: 1.7;
+}
+.study-picker .group-preview > div > span {
+  background: #f2f6ee;
+  color: #36543e;
+}
+.picker-selection-summary > span {
+  display: block;
+  max-width: 280px;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  color: #345747;
+  margin-bottom: 5px;
+}
+.study-picker .modal-footer {
+  position: static;
+  color: #526b5f;
+}
+@media (max-width: 540px) {
+  .modal.study-picker[open] {
+    width: calc(100vw - 16px);
+  }
+  .study-picker .modal-head {
+    padding: 18px 20px;
+  }
+  .study-picker .modal-head h2 {
+    font-size: 21px;
+  }
+  .picker-deck-control {
+    padding: 18px 20px 0;
+  }
+  .study-picker .study-group-grid {
+    grid-template-columns: 1fr;
+  }
+  .study-picker .study-group {
+    padding: 14px 16px;
+  }
+  .study-picker .study-group h3 {
+    font-size: 20px;
+    margin-top: 8px;
+  }
+  .study-picker .study-group-terms {
+    margin-top: 6px;
+  }
+  .study-picker .study-group-bottom {
+    padding-top: 9px;
+    margin-top: 9px;
+  }
+  .picker-selection-summary > span {
+    max-width: 145px;
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .study-picker .study-group {
+    transition: none;
+    transform: none;
+  }
+}

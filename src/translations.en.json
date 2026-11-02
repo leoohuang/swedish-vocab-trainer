@@ -481,5 +481,15 @@
   "API 账户额度不足，请检查 API 账户余额和项目预算后重试。": "Your API account has insufficient quota. Check its balance and project budget.",
   "模型服务当前限流或额度不足，请稍后重试或检查账户。": "The provider is rate-limiting requests or has insufficient quota. Try later or check your account.",
   "模型服务暂时不可用，请稍后重试。": "The model provider is temporarily unavailable. Try again later.",
-  "模型服务拒绝了请求，请检查模型名称、接口格式和服务配置。": "The model provider rejected this request. Check the model, API format, and settings."
+  "模型服务拒绝了请求，请检查模型名称、接口格式和服务配置。": "The model provider rejected this request. Check the model, API format, and settings.",
+  "练习词库": "Practice deck",
+  "一次专注一个词库，每组最多 10 个词。": "Focus on one deck at a time, up to 10 words per group.",
+  "选一组，再记牢一点": "Pick a group to refresh",
+  "每个词独立拼对两次，完成本轮复习。": "Spell every word correctly twice without hints to finish this review.",
+  "{0} 词到期": "{0} due",
+  "随时可练": "Ready to review",
+  "第 {0} 组": "Group {0}",
+  "{0} 个词": "{0} words",
+  "选择这组": "Choose this group",
+  "已选中": "Selected"
 }

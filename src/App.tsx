@@ -82,11 +82,13 @@ function Modal({
   children,
   onClose,
   wide = false,
+  className = '',
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -97,7 +99,7 @@ function Modal({
   return (
     <dialog
       ref={ref}
-      className={`modal ${wide ? 'wide' : ''}`}
+      className={`modal ${wide ? 'wide' : ''} ${className}`}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
@@ -175,6 +177,7 @@ export default function App() {
     [picking, setPicking] = useState(false),
     [selected, setSelected] = useState<string[]>([]),
     [pickerWords, setPickerWords] = useState<Word[]>([]),
+    [pickerDeck, setPickerDeck] = useState<string | null>(null),
     [chosenGroup, setChosenGroup] = useState<string | null>(null),
     [manualPick, setManualPick] = useState(false),
     [reviewPicker, setReviewPicker] = useState(false),
@@ -571,7 +574,21 @@ export default function App() {
   }
   const allGroups = studyGroups(data.words, data.decks);
   const homeNextGroup = recommendedGroup(allGroups.filter((g) => !deckId || g.deckId === deckId));
-  const pickerGroups = studyGroups(pickerWords, data.decks);
+  const pickerDecks = data.decks.filter((d) => pickerWords.some((w) => w.deckId === d.id));
+  const visiblePickerWords = pickerWords.filter((w) => w.deckId === pickerDeck);
+  const pickerGroups = studyGroups(visiblePickerWords, data.decks);
+  function selectPickerDeck(id: string) {
+    const groups = studyGroups(
+      pickerWords.filter((w) => w.deckId === id),
+      data.decks,
+    );
+    const group = reviewAll ? groups[0] : recommendedGroup(groups, reviewPicker);
+    setPickerDeck(id);
+    setChosenGroup(group?.key || null);
+    setSelected(
+      group ? (reviewAll ? group.words : groupWords(group, reviewPicker)).map((w) => w.id) : [],
+    );
+  }
   function chooseGroup(group: StudyGroup, review = reviewPicker) {
     setChosenGroup(group.key);
     setSelected((reviewAll ? group.words : groupWords(group, review)).map((w) => w.id));
@@ -590,6 +607,7 @@ export default function App() {
     const pool = assignWordGroups(words);
     const groups = studyGroups(pool, data.decks);
     const group = allReview ? groups[0] : recommendedGroup(groups, review);
+    setPickerDeck(group?.deckId || groups[0]?.deckId || null);
     setPickerWords(pool);
     setReviewPicker(review);
     setReviewAll(allReview);
@@ -2085,72 +2103,90 @@ export default function App() {
       )}
       {picking && (
         <Modal
-          title={
-            reviewAll
-              ? t('巩固练过的词，每组最多 10 个')
-              : reviewPicker
-                ? t('到期复习，每组最多 10 个')
-                : t('接着学，每组 10 个')
-          }
+          title={reviewAll ? t('主动巩固') : reviewPicker ? t('到期复习') : t('接着学，每组 10 个')}
           onClose={() => setPicking(false)}
+          className="study-picker"
         >
-          <div className="group-picker-tabs">
-            <button
-              className={!manualPick ? 'selected' : ''}
-              onClick={() => {
-                setManualPick(false);
-                const group = reviewAll
-                  ? pickerGroups[0]
-                  : recommendedGroup(pickerGroups, reviewPicker);
-                setChosenGroup(group?.key || null);
-                setSelected(
-                  group
-                    ? (reviewAll ? group.words : groupWords(group, reviewPicker)).map((w) => w.id)
-                    : [],
-                );
-              }}
-            >
-              {t('按组练习')}
-            </button>
-            <button className={manualPick ? 'selected' : ''} onClick={() => setManualPick(true)}>
-              {t('自己选词')}
-            </button>
-          </div>
-          {!manualPick ? (
-            <GroupChoices
-              groups={pickerGroups}
-              selectedKey={chosenGroup}
-              onChoose={chooseGroup}
-              review={reviewPicker}
-              allReview={reviewAll}
-            />
-          ) : (
-            <>
-              <p className="picker-help">
-                {t('自由挑选最多 20 个词；也可以回到按组练习，一键开始下一组。')}
-              </p>
-              <div className="picker-list">
-                {pickerWords.map((w) => (
-                  <label key={w.id}>
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(w.id)}
-                      disabled={!selected.includes(w.id) && selected.length >= 20}
-                      onChange={(e) =>
-                        setSelected((old) =>
-                          e.target.checked ? [...old, w.id] : old.filter((id) => id !== w.id),
-                        )
-                      }
-                    />
-                    <strong lang="sv">{w.term}</strong>
-                    <span>{w.meaning}</span>
-                  </label>
+          <div className="picker-body">
+            <div className="picker-deck-control">
+              <label htmlFor="practice-deck">{t('练习词库')}</label>
+              <select
+                id="practice-deck"
+                value={pickerDeck || ''}
+                onChange={(event) => selectPickerDeck(event.target.value)}
+              >
+                {pickerDecks.map((deck) => (
+                  <option key={deck.id} value={deck.id}>
+                    {deck.name}
+                  </option>
                 ))}
-              </div>
-            </>
-          )}
+              </select>
+              <p>{t('一次专注一个词库，每组最多 10 个词。')}</p>
+            </div>
+            <div className="group-picker-tabs">
+              <button
+                className={!manualPick ? 'selected' : ''}
+                onClick={() => {
+                  setManualPick(false);
+                  const group = reviewAll
+                    ? pickerGroups[0]
+                    : recommendedGroup(pickerGroups, reviewPicker);
+                  setChosenGroup(group?.key || null);
+                  setSelected(
+                    group
+                      ? (reviewAll ? group.words : groupWords(group, reviewPicker)).map((w) => w.id)
+                      : [],
+                  );
+                }}
+              >
+                {t('按组练习')}
+              </button>
+              <button className={manualPick ? 'selected' : ''} onClick={() => setManualPick(true)}>
+                {t('自己选词')}
+              </button>
+            </div>
+            {!manualPick ? (
+              <GroupChoices
+                groups={pickerGroups}
+                selectedKey={chosenGroup}
+                onChoose={chooseGroup}
+                review={reviewPicker}
+                allReview={reviewAll}
+              />
+            ) : (
+              <>
+                <p className="picker-help">
+                  {t('自由挑选最多 20 个词；也可以回到按组练习，一键开始下一组。')}
+                </p>
+                <div className="picker-list">
+                  {visiblePickerWords.map((w) => (
+                    <label key={w.id}>
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(w.id)}
+                        disabled={!selected.includes(w.id) && selected.length >= 20}
+                        onChange={(e) =>
+                          setSelected((old) =>
+                            e.target.checked ? [...old, w.id] : old.filter((id) => id !== w.id),
+                          )
+                        }
+                      />
+                      <strong lang="sv">{w.term}</strong>
+                      <span>{w.meaning}</span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <div className="modal-footer">
-            <span>
+            <span className="picker-selection-summary">
+              <span>
+                {data.decks.find((d) => d.id === pickerDeck)?.name}
+                {!manualPick &&
+                  chosenGroup &&
+                  ` · ${t('第 {0} 组', pickerGroups.find((g) => g.key === chosenGroup)?.number)}`}
+              </span>
               {manualPick ? t('已选') : t('本次练习')} <strong>{selected.length}</strong>
               {t(' 个词')}
             </span>
